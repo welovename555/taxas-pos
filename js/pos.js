@@ -1,5 +1,4 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // ส่วนที่ 1: ตรวจสอบการล็อกอิน และ UI พื้นฐาน
     const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
     if (!currentUser) {
         alert('กรุณาเข้าสู่ระบบก่อนใช้งาน');
@@ -16,12 +15,10 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'flex');
     }
 
-    // ส่วนที่ 2: ระบบ POS - ตัวแปรและข้อมูล
-    let products = []; // <--- เปลี่ยนเป็นตัวแปรว่าง เพื่อรอรับข้อมูลจาก Supabase
+    let products = [];
     let liveStocks = {};
     let cart = [];
 
-    // --- UI Element References ---
     const categoryTabsContainer = document.getElementById('category-tabs');
     const productGridContainer = document.getElementById('product-grid');
     const cartItemsContainer = document.getElementById('cart-items');
@@ -37,10 +34,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const endShiftButton = document.getElementById('end-shift-button');
     const shiftSummaryModal = document.getElementById('shift-summary-modal');
     
-    // ---- Render Functions ----
     function renderCategories() {
         const categories = [...new Set(products.map(p => p.category))];
-        // เพื่อให้แน่ใจว่าหมวดหมู่เรียงตามที่คุณต้องการ อาจกำหนดลำดับเอง
         const sortedCategories = ['น้ำ', 'บุหรี่', 'ยา', 'อื่นๆ'].filter(c => categories.includes(c));
         
         categoryTabsContainer.innerHTML = '';
@@ -53,6 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
             categoryTabsContainer.appendChild(tab);
         });
     }
+
     function renderProducts(category) {
         const productsToRender = products.filter(p => p.category === category);
         productGridContainer.innerHTML = '';
@@ -62,15 +58,16 @@ document.addEventListener('DOMContentLoaded', () => {
             item.dataset.productId = p.id;
             const stock = liveStocks[p.id] ?? 'N/A';
             const isOutOfStock = stock === 'N/A' || stock <= 0;
-            // สร้าง image path จาก id ของสินค้า
             const imagePath = `img/${p.id}.jpg`;
-            const displayPrice = p.price ? `฿${p.price}` : 'เลือกราคา';
+            
+            const displayPrice = p.prices ? 'เลือกราคา' : (p.price ? `฿${p.price}` : 'N/A');
 
             item.innerHTML = `<img src="${imagePath}" alt="${p.name}" onerror="this.src='img/placeholder.png';"><div class="product-name">${p.name}</div><div class="product-price">${displayPrice}</div><div class="product-stock" style="color: ${isOutOfStock ? '#fa383e' : '#888'};">สต็อก: ${stock}</div>`;
             if (isOutOfStock) item.classList.add('disabled');
             productGridContainer.appendChild(item);
         });
     }
+
     function renderCart() {
         if (cart.length === 0) {
             cartItemsContainer.innerHTML = `<p class="empty-cart-text">ตะกร้าสินค้าว่าง</p>`;
@@ -88,6 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
         totalPriceEl.textContent = `฿${totalPrice}`;
     }
+
     function addToCart(productId, price) {
         const product = products.find(p => p.id === productId);
         if (!product) return;
@@ -102,13 +100,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         renderCart();
     }
+
     function openPriceModal(product) {
         document.getElementById('modal-product-name').textContent = `เลือกราคาสำหรับ: ${product.name}`;
         const optionsContainer = document.getElementById('modal-price-options');
         optionsContainer.innerHTML = '';
-        // สมมติว่าข้อมูล prices อยู่ในคอลัมน์ jsonb หรือ text[] ใน supabase
-        // ถ้าไม่มี ต้องไปดึงจากตาราง product_prices
-        const pricesToDisplay = product.prices || []; // ใช้ prices ที่ดึงมา
+        const pricesToDisplay = product.prices || [];
         pricesToDisplay.forEach(price => {
             const button = document.createElement('button');
             button.className = 'price-option-button';
@@ -118,6 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         priceModal.style.display = 'flex';
     }
+
     function closePriceModal() { priceModal.style.display = 'none'; }
     function openPaymentModal() { paymentModal.style.display = 'flex'; }
     function closePaymentModal() { paymentModal.style.display = 'none'; }
@@ -130,12 +128,14 @@ document.addEventListener('DOMContentLoaded', () => {
         moneyReceivedInput.focus();
     }
     function closeChangeModal() { changeModal.style.display = 'none'; }
+
     async function fetchStockFromSupa() {
         const { data, error } = await supabaseClient.from('product_stocks').select('*');
         if (error) { console.error('โหลด stock ล้มเหลว:', error.message); return false; }
         data.forEach(item => { liveStocks[item.product_id] = item.stock; });
         return true;
     }
+
     supabaseClient.channel('stock-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'product_stocks' }, (payload) => {
         const updated = payload.new;
         if (updated) {
@@ -144,6 +144,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (currentCategory) renderProducts(currentCategory);
         }
     }).subscribe();
+
     async function processSale(paymentMethod) {
         if (cart.length === 0) return;
         closePaymentModal();
@@ -159,7 +160,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const transactionId = crypto.randomUUID();
         try {
-            const saleRecords = cart.map(item => ({ transaction_id: transactionId, shift_id: shiftId, employee_id: currentUser.id, product_id: item.id, price: item.price, qty: item.quantity, payment_type: 'cash' }));
+            const saleRecords = cart.map(item => ({ transaction_id: transactionId, shift_id: shiftId, employee_id: currentUser.id, product_id: item.id, price: item.price, qty: item.quantity, payment_type: paymentMethod }));
             const { error } = await supabaseClient.from('sales').insert(saleRecords);
             if (error) throw error;
         } catch (error) { alert('เกิดข้อผิดพลาดในการบันทึกการขาย: ' + error.message); return; }
@@ -174,6 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
         cart = [];
         renderCart();
     }
+
     async function fetchSalesHistory() {
         const today = new Date();
         if (today.getHours() < 6) { today.setDate(today.getDate() - 1); }
@@ -181,16 +183,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
         tomorrow.setHours(2, 0, 0, 0);
-        const { data, error } = await supabaseClient.from('sales').select('*').gte('created_at', today.toISOString()).lt('created_at', tomorrow.toISOString()).order('created_at', { ascending: false });
+        const { data, error } = await supabaseClient.from('sales').select('*, employees(name)').gte('created_at', today.toISOString()).lt('created_at', tomorrow.toISOString()).order('created_at', { ascending: false });
         if (error) {
             console.error('Error fetching sales history:', error);
-            alert('ไม่สามารถโหลดประวัติการขายได้: ' + error.message);
+            alert('ไม่สามารถโหลดประวัติการขายได้');
             return null;
         }
         const groupedSales = data.reduce((acc, sale) => {
             const txId = sale.transaction_id;
             if (!acc[txId]) {
-                acc[txId] = { items: [], total: 0, payment_type: sale.payment_type, employee_id: sale.employee_id, created_at: sale.created_at };
+                acc[txId] = { items: [], total: 0, payment_type: sale.payment_type, employee_name: sale.employees ? sale.employees.name : 'N/A', created_at: sale.created_at };
             }
             acc[txId].items.push(sale);
             acc[txId].total += sale.price * sale.qty;
@@ -198,6 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, {});
         return Object.values(groupedSales);
     }
+
     function renderSalesHistory(transactions) {
         historyTableBody.innerHTML = '';
         if (!transactions || transactions.length === 0) {
@@ -212,24 +215,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 const productName = productInfo ? productInfo.name : item.product_id;
                 return `${productName} x${item.qty}`;
             }).join('\n');
-            row.innerHTML = `<td>${time}</td><td class="items-cell">${itemsString}</td><td>฿${tx.total.toFixed(2)}</td><td>${tx.payment_type === 'cash' ? 'เงินสด' : 'โอนชำระ'}</td><td>${tx.employee_id}</td>`;
+            row.innerHTML = `<td>${time}</td><td class="items-cell">${itemsString}</td><td>฿${tx.total.toFixed(2)}</td><td>${tx.payment_type === 'cash' ? 'เงินสด' : 'โอนชำระ'}</td><td>${tx.employee_name}</td>`;
             historyTableBody.appendChild(row);
         });
     }
+
     async function displaySalesHistory() {
         loadingOverlay.style.display = 'flex';
-        const minLoadingTime = new Promise(resolve => setTimeout(resolve, 500));
-        try {
-            const fetchPromise = fetchSalesHistory();
-            const [_, transactions] = await Promise.all([minLoadingTime, fetchPromise]);
-            if (transactions) { renderSalesHistory(transactions); }
-        } catch (error) {
-            console.error("An error occurred in displaySalesHistory:", error);
-            alert("เกิดข้อผิดพลาดในการแสดงผลประวัติการขาย");
-        } finally {
-            loadingOverlay.style.display = 'none';
-        }
+        const minLoadingTime = new Promise(resolve => setTimeout(resolve, 1000));
+        const fetchPromise = fetchSalesHistory();
+        const [_, transactions] = await Promise.all([minLoadingTime, fetchPromise]);
+        if (transactions) { renderSalesHistory(transactions); }
+        loadingOverlay.style.display = 'none';
     }
+
     async function endCurrentShift() {
         if (!confirm('คุณต้องการปิดกะและสรุปยอดขายใช่หรือไม่?')) return;
         const shiftId = localStorage.getItem('currentShiftId');
@@ -301,11 +300,21 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.nav-item').forEach(tab => tab.classList.remove('active'));
         navItem.classList.add('active');
         const tabName = navItem.dataset.tab;
-        document.querySelectorAll('.content-view').forEach(view => view.style.display = 'none');
-        const targetView = document.getElementById(tabName);
-        if (targetView) targetView.style.display = 'flex';
         if (tabName === 'history-view') {
+            document.querySelectorAll('.content-view').forEach(view => view.style.display = 'none');
+            const targetView = document.getElementById(tabName);
+            if(targetView) targetView.style.display = 'flex';
             displaySalesHistory();
+        } else {
+            loadingOverlay.style.display = 'flex';
+            setTimeout(() => {
+                document.querySelectorAll('.content-view').forEach(view => view.style.display = 'none');
+                const targetView = document.getElementById(tabName);
+                if (targetView) {
+                    targetView.style.display = 'flex';
+                }
+                loadingOverlay.style.display = 'none';
+            }, 500);
         }
     });
     categoryTabsContainer.addEventListener('click', e => {
