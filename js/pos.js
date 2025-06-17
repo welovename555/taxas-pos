@@ -1,7 +1,9 @@
-// js/pos.js (ฉบับแก้ไข - ปรับปรุงการดึงข้อมูลประวัติการขาย)
+// js/pos.js (ฉบับแก้ไข - เพิ่ม Event Listener ของ Category Tab ที่หายไปกลับคืนมา)
 
 document.addEventListener('DOMContentLoaded', () => {
-    // ส่วนที่ 1 และ 2 (Auth, POS Variables) ไม่มีการเปลี่ยนแปลง
+    // =================================================================
+    // ส่วนที่ 1: ตรวจสอบการล็อกอิน และ UI พื้นฐาน
+    // =================================================================
     const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
     if (!currentUser) {
         alert('กรุณาเข้าสู่ระบบก่อนใช้งาน');
@@ -17,6 +19,9 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'flex');
     }
 
+    // =================================================================
+    // ส่วนที่ 2: ระบบ POS - ตัวแปรและข้อมูล
+    // =================================================================
     const products = [
       { id: "A001", name: "น้ำดิบขวดใหญ่", category: "น้ำ", price: 40, image: "img/A001.jpg" },
       { id: "A002", name: "น้ำดิบขวดเล็ก", category: "น้ำ", price: 25, image: "img/A002.jpg" },
@@ -31,11 +36,11 @@ document.addEventListener('DOMContentLoaded', () => {
       { id: "C002", name: "ยาฝาแดง", category: "ยา", price: 70, image: "img/C002.jpg" },
       { id: "D001", name: "น้ำตาลสด", category: "อื่นๆ", price: 12, image: "img/D001.jpg" },
       { id: "D002", name: "โค้ก", category: "อื่นๆ", price: 17, image: "img/D002.jpg" },
-      { id: "D003", name: "อิชิตัน", category: "อื่นๆ", price: 10, image: "img/D003.jpg" },
-      { id: "D004", name: "ใบขีด", category: "อื่นๆ", price: 15, image: "img/D004.jpg" },
-      { id: "D005", name: "ใบครึ่งโล", category: "อื่นๆ", price: 60, image: "img/D005.jpg" },
-      { id: "D006", name: "ใบกิโล", category: "อื่นๆ", price: 99, image: "img/D006.jpg" },
-      { id: "D007", name: "น้ำแข็ง", category: "อื่นๆ", prices: [5, 10, 20], image: "img/D007.jpg" },
+      { id: "D003", "name": "อิชิตัน", category: "อื่นๆ", price: 10, image: "img/D003.jpg" },
+      { id: "D004", "name": "ใบขีด", category: "อื่นๆ", price: 15, image: "img/D004.jpg" },
+      { id: "D005", "name": "ใบครึ่งโล", category: "อื่นๆ", price: 60, image: "img/D005.jpg" },
+      { id: "D006", "name": "ใบกิโล", category: "อื่นๆ", price: 99, image: "img/D006.jpg" },
+      { id: "D007", "name": "น้ำแข็ง", category: "อื่นๆ", prices: [5, 10, 20], image: "img/D007.jpg" },
     ];
     let liveStocks = {};
     let cart = [];
@@ -52,7 +57,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const changeDueAmountEl = document.getElementById('change-due-amount');
     const historyTableBody = document.getElementById('history-table-body');
     const loadingOverlay = document.getElementById('loading-overlay');
-
     function renderCategories() {
         const categories = ['น้ำ', 'บุหรี่', 'ยา', 'อื่นๆ'];
         categoryTabsContainer.innerHTML = '';
@@ -166,7 +170,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const transactionId = crypto.randomUUID();
         try {
-            const saleRecords = cart.map(item => ({ transaction_id: transactionId, shift_id: shiftId, employee_id: currentUser.id, product_id: item.id, price: item.price, qty: item.quantity, payment_type: paymentMethod }));
+            const saleRecords = cart.map(item => ({ transaction_id: transactionId, shift_id: shiftId, employee_id: currentUser.id, product_id: item.id, price: item.price, qty: item.quantity, payment_type: 'cash' }));
             const { error } = await supabaseClient.from('sales').insert(saleRecords);
             if (error) throw error;
         } catch (error) { alert('เกิดข้อผิดพลาดในการบันทึกการขาย: ' + error.message); return; }
@@ -181,9 +185,6 @@ document.addEventListener('DOMContentLoaded', () => {
         cart = [];
         renderCart();
     }
-    
-    // --- ⭐️⭐️ ส่วนที่แก้ไข ⭐️⭐️ ---
-
     async function fetchSalesHistory() {
         const today = new Date();
         if (today.getHours() < 6) { today.setDate(today.getDate() - 1); }
@@ -191,40 +192,23 @@ document.addEventListener('DOMContentLoaded', () => {
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
         tomorrow.setHours(2, 0, 0, 0);
-
-        // 1. แก้ไขคำสั่ง select ให้ง่ายลง ไม่ต้อง join ข้อมูลข้ามตาราง
-        const { data, error } = await supabaseClient
-            .from('sales')
-            .select('*') // <--- เอา `employees(name)` ออก
-            .gte('created_at', today.toISOString())
-            .lt('created_at', tomorrow.toISOString())
-            .order('created_at', { ascending: false });
-
+        const { data, error } = await supabaseClient.from('sales').select('*').gte('created_at', today.toISOString()).lt('created_at', tomorrow.toISOString()).order('created_at', { ascending: false });
         if (error) {
             console.error('Error fetching sales history:', error);
-            alert('ไม่สามารถโหลดประวัติการขายได้: ' + error.message); // แสดง error message จริง
+            alert('ไม่สามารถโหลดประวัติการขายได้: ' + error.message);
             return null;
         }
-
         const groupedSales = data.reduce((acc, sale) => {
             const txId = sale.transaction_id;
             if (!acc[txId]) {
-                acc[txId] = {
-                    items: [],
-                    total: 0,
-                    payment_type: sale.payment_type,
-                    employee_id: sale.employee_id, // <--- ใช้ employee_id แทน
-                    created_at: sale.created_at
-                };
+                acc[txId] = { items: [], total: 0, payment_type: sale.payment_type, employee_id: sale.employee_id, created_at: sale.created_at };
             }
             acc[txId].items.push(sale);
             acc[txId].total += sale.price * sale.qty;
             return acc;
         }, {});
-
         return Object.values(groupedSales);
     }
-
     function renderSalesHistory(transactions) {
         historyTableBody.innerHTML = '';
         if (!transactions || transactions.length === 0) {
@@ -239,24 +223,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const productName = productInfo ? productInfo.name : item.product_id;
                 return `${productName} x${item.qty}`;
             }).join('\n');
-            
-            // 2. แสดงผลเป็น employee_id ไปก่อน
-            row.innerHTML = `
-                <td>${time}</td>
-                <td class="items-cell">${itemsString}</td>
-                <td>฿${tx.total.toFixed(2)}</td>
-                <td>${tx.payment_type === 'cash' ? 'เงินสด' : 'โอนชำระ'}</td>
-                <td>${tx.employee_id}</td> 
-            `;
+            row.innerHTML = `<td>${time}</td><td class="items-cell">${itemsString}</td><td>฿${tx.total.toFixed(2)}</td><td>${tx.payment_type === 'cash' ? 'เงินสด' : 'โอนชำระ'}</td><td>${tx.employee_id}</td>`;
             historyTableBody.appendChild(row);
         });
     }
-
     async function displaySalesHistory() {
         loadingOverlay.style.display = 'flex';
-        const minLoadingTime = new Promise(resolve => setTimeout(resolve, 500)); // ลดเวลาลงเล็กน้อย
-        
-        // 3. ห่อด้วย try...catch เพื่อป้องกันแอปค้าง
+        const minLoadingTime = new Promise(resolve => setTimeout(resolve, 500));
         try {
             const fetchPromise = fetchSalesHistory();
             const [_, transactions] = await Promise.all([minLoadingTime, fetchPromise]);
@@ -267,29 +240,33 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("An error occurred in displaySalesHistory:", error);
             alert("เกิดข้อผิดพลาดในการแสดงผลประวัติการขาย");
         } finally {
-            loadingOverlay.style.display = 'none'; // ซ่อน Spinner เสมอไม่ว่าจะสำเร็จหรือล้มเหลว
+            loadingOverlay.style.display = 'none';
         }
     }
-
-    // --- สิ้นสุดส่วนที่แก้ไข ---
-
+    
     document.getElementById('sidebar-nav').addEventListener('click', e => {
         const navItem = e.target.closest('.nav-item');
         if (!navItem || navItem.classList.contains('active')) return;
         document.querySelectorAll('.nav-item').forEach(tab => tab.classList.remove('active'));
         navItem.classList.add('active');
         const tabName = navItem.dataset.tab;
-        
         document.querySelectorAll('.content-view').forEach(view => view.style.display = 'none');
         const targetView = document.getElementById(tabName);
         if (targetView) targetView.style.display = 'flex';
-
         if (tabName === 'history-view') {
             displaySalesHistory();
-        } else {
-            // ไม่ต้องมี spinner สำหรับ tab อื่นๆ ที่ไม่มีการโหลดข้อมูล
         }
     });
+    
+    // --- ⭐️⭐️ ส่วนที่เพิ่มกลับเข้ามา ⭐️⭐️ ---
+    categoryTabsContainer.addEventListener('click', e => {
+        if (e.target.classList.contains('category-tab')) {
+            document.querySelectorAll('.category-tab').forEach(tab => tab.classList.remove('active'));
+            e.target.classList.add('active');
+            renderProducts(e.target.dataset.category);
+        }
+    });
+    // --- สิ้นสุดส่วนที่เพิ่มกลับเข้ามา ---
 
     productGridContainer.addEventListener('click', e => {
         const productItem = e.target.closest('.product-item');
