@@ -3,18 +3,83 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TEXAS POS - ขายของ</title>
+  <title>TEXAS POS</title>
   <link rel="stylesheet" href="css/style.css" />
+
+  <!-- Font Awesome (สำหรับไอคอนฝั่ง Tap) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <!-- Material Icons (ไอคอนแนว Google) -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
 </head>
 <body>
-  <h1>TEXAS POS</h1>
-  <div id="sidebar">
-    <!-- Sidebar menu tabs -->
+  <div class="app-container">
+
+    <!-- Sidebar (เมนูฝั่งซ้าย) -->
+    <aside class="sidebar">
+      <div class="logo">TEXAS POS</div>
+      <nav class="menu">
+        <button onclick="navigate('sale')" class="menu-btn"><i class="material-icons">shopping_cart</i> ขายของ</button>
+        <button onclick="navigate('history')" class="menu-btn"><i class="material-icons">history</i> ประวัติการขาย</button>
+        <button onclick="navigate('stock-add')" class="menu-btn"><i class="fas fa-box"></i> เพิ่มจำนวนสต๊อก</button>
+        <button onclick="navigate('add-product')" id="admin-only" class="menu-btn"><i class="fas fa-plus-square"></i> เพิ่มสินค้า</button>
+        <button onclick="navigate('shift')" class="menu-btn"><i class="fas fa-chart-line"></i> ปิดกะ</button>
+        <button onclick="toggleTheme()" class="menu-btn"><i class="fas fa-palette"></i> เปลี่ยนธีม</button>
+        <button onclick="logout()" class="menu-btn"><i class="fas fa-sign-out-alt"></i> ออกจากระบบ</button>
+      </nav>
+    </aside>
+
+    <!-- Main content -->
+    <main class="main-view">
+
+      <!-- หน้าขายของ (default) -->
+      <section id="page-sale" class="page active">
+        <h2>เลือกหมวดหมู่สินค้า</h2>
+        <div class="category-tabs">
+          <button onclick="filterCategory('น้ำ')">น้ำ</button>
+          <button onclick="filterCategory('บุหรี่')">บุหรี่</button>
+          <button onclick="filterCategory('ยา')">ยา</button>
+          <button onclick="filterCategory('อื่นๆ')">อื่นๆ</button>
+        </div>
+
+        <div class="product-list" id="product-list">
+          <!-- รายการสินค้าแสดงตรงนี้ -->
+        </div>
+
+        <div class="cart-summary">
+          <h3>ตะกร้า</h3>
+          <ul id="cart-items"></ul>
+          <div class="total">รวมทั้งหมด: <span id="cart-total">0</span> บาท</div>
+          <button onclick="checkout()">รับเงิน</button>
+        </div>
+      </section>
+
+      <!-- หน้าประวัติการขาย -->
+      <section id="page-history" class="page">
+        <h2>ประวัติการขายของวัน</h2>
+        <div id="history-table">[อยู่ระหว่างพัฒนา]</div>
+      </section>
+
+      <!-- เพิ่มจำนวนสต๊อก -->
+      <section id="page-stock-add" class="page">
+        <h2>เพิ่มจำนวนสต๊อก</h2>
+        <div>[อยู่ระหว่างพัฒนา]</div>
+      </section>
+
+      <!-- เพิ่มสินค้า (admin-only) -->
+      <section id="page-add-product" class="page">
+        <h2>เพิ่มสินค้าใหม่</h2>
+        <div>[อยู่ระหว่างพัฒนา]</div>
+      </section>
+
+      <!-- ปิดกะ -->
+      <section id="page-shift" class="page">
+        <h2>สรุปยอดปิดกะ</h2>
+        <div>[อยู่ระหว่างพัฒนา]</div>
+      </section>
+
+    </main>
   </div>
-  <div id="main-content">
-    <!-- POS interface -->
-  </div>
+
   <script src="js/pos.js"></script>
-  <script src="js/supabaseClient.js"></script>
 </body>
 </html>
