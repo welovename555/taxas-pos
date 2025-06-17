@@ -1,64 +1,4 @@
-// js/pos.js (ฉบับแก้ไข - ตรวจสอบค่า data-method ให้แม่นยำ)
-
-document.addEventListener('DOMContentLoaded', () => {
-    // ... (ส่วนที่ 1: ตรวจสอบการล็อกอิน และ UI พื้นฐาน) - ไม่เปลี่ยนแปลง ...
-
-    // =================================================================
-    // ส่วนที่ 2: ระบบ POS
-    // =================================================================
-    
-    // ... (const products, let liveStocks, let cart) - ไม่เปลี่ยนแปลง ...
-    // ... (UI elements, Modal elements) - ไม่เปลี่ยนแปลง ...
-    // ... (Render Functions, Data Handlers, Modal Functions) - ไม่เปลี่ยนแปลง ...
-    // ... (Real-time & Data Fetching) - ไม่เปลี่ยนแปลง ...
-    // ... (CORE SALE PROCESS) - ไม่เปลี่ยนแปลง ...
-
-    // ---- Event Listeners ----
-    categoryTabsContainer.addEventListener('click', e => { /* โค้ดเดิม */ });
-    productGridContainer.addEventListener('click', e => { /* โค้ดเดิม */ });
-    priceModal.addEventListener('click', e => { if (e.target.id === 'modal-close-button' || e.target.id === 'multi-price-modal') closePriceModal(); });
-    checkoutButton.addEventListener('click', () => { if (cart.length > 0) openPaymentModal(); });
-    
-    // --- ส่วนที่แก้ไข ---
-    paymentModal.addEventListener('click', e => {
-        if (e.target.id === 'payment-modal-close-button' || e.target.id === 'payment-modal') {
-            closePaymentModal();
-            return;
-        }
-        
-        const button = e.target.closest('.payment-option-button');
-        if (button) {
-            const method = button.dataset.method; // จะได้ค่า "เงินสด" หรือ "โอนชำระ"
-            
-            // ตรวจสอบค่าให้ตรงกันเป๊ะๆ
-            if (method === 'โอนชำระ') {
-                processSale('โอนชำระ');
-            } else if (method === 'เงินสด') {
-                closePaymentModal();
-                openChangeModal();
-            }
-        }
-    });
-    // --- สิ้นสุดส่วนที่แก้ไข ---
-
-    moneyReceivedInput.addEventListener('input', () => { /* โค้ดเดิม */ });
-    document.getElementById('confirm-payment-button').addEventListener('click', () => processSale('เงินสด')); // แก้ไขให้ตรงกัน
-    changeModal.addEventListener('click', e => { if (e.target.id === 'change-modal-close-button' || e.target.id === 'change-modal') closeChangeModal(); });
-
-    // ---- Initialize POS ----
-    function initializePOS() { /* โค้ดเดิม */ }
-
-    // -- คัดลอกเนื้อหาฟังก์ชันทั้งหมดที่ผมย่อไว้ `/* ... */` จากไฟล์ล่าสุด (แชท 42) มาใส่ให้ครบ --
-    // ... (Function definitions for renderCategories, renderProducts, renderCart, etc.) ...
-    // ... (The full processSale function) ...
-    
-    initializePOS();
-});
-
-
-// ===============================================================
-// ===== โค้ดฉบับเต็มสมบูรณ์ของ js/pos.js อยู่ด้านล่างนี้ครับ =====
-// ===============================================================
+// js/pos.js (ฉบับสมบูรณ์ Master Version)
 
 document.addEventListener('DOMContentLoaded', () => {
     const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
@@ -336,6 +276,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const button = e.target.closest('.payment-option-button');
         if (button) {
             const method = button.dataset.method;
+            // ตรวจสอบค่าที่ถูกต้องจาก data-method
             if (method === 'โอนชำระ') {
                 processSale('โอนชำระ');
             } else if (method === 'เงินสด') {
