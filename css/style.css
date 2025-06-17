@@ -1,18 +1,101 @@
+/* === Base and Variables === */
+:root {
+    --primary-font: 'IBM Plex Sans Thai', sans-serif;
+    --background-color: #f0f2f5;
+    --surface-color: #ffffff;
+    --primary-text-color: #1d2129;
+    --secondary-text-color: #606770;
+    --accent-color: #1877f2; /* A standard, trustworthy blue */
+    --border-color: #dddfe2;
+    --error-color: #fa383e;
+}
+
 body {
-  font-family: sans-serif;
-  padding: 20px;
-  background-color: #f5f5f5;
+    margin: 0;
+    font-family: var(--primary-font);
+    background-color: var(--background-color);
+    color: var(--primary-text-color);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
-.title {
-  font-size: 1.5rem;
-  margin-bottom: 1rem;
+
+/* === Login Page Layout === */
+#login-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    padding: 20px;
+    box-sizing: border-box;
 }
-input {
-  font-size: 1rem;
-  padding: 8px;
-  margin-bottom: 10px;
+
+.login-box {
+    width: 100%;
+    max-width: 380px;
+    padding: 30px;
+    background-color: var(--surface-color);
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    text-align: center;
 }
-button {
-  font-size: 1rem;
-  padding: 8px 12px;
+
+/* === Login Page Elements === */
+.login-header {
+    font-size: 36px;
+    font-weight: 700;
+    margin: 0 0 10px 0;
+    color: var(--primary-text-color);
+}
+
+.login-subheader {
+    font-size: 16px;
+    color: var(--secondary-text-color);
+    margin: 0 0 25px 0;
+}
+
+#login-form input[type="tel"] {
+    width: 70%;
+    max-width: 200px;
+    height: 50px;
+    padding: 0 10px;
+    font-size: 32px;
+    text-align: center;
+    letter-spacing: 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    background-color: #f5f6f7;
+    color: var(--primary-text-color);
+    margin-bottom: 20px;
+    box-sizing: border-box;
+    font-weight: 500;
+}
+
+#login-form input[type="tel"]::placeholder {
+    color: #bec3c9;
+}
+
+#login-form button {
+    width: 100%;
+    padding: 14px;
+    font-size: 18px;
+    font-weight: 500;
+    font-family: var(--primary-font);
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+#login-form button:hover {
+    background-color: #166fe5;
+}
+
+.error-message {
+    color: var(--error-color);
+    margin-top: 15px;
+    height: 20px; /* Reserve space to prevent layout shift */
+    font-size: 14px;
+    font-weight: 500;
 }
