@@ -1,4 +1,4 @@
-// js/pos.js (ฉบับสมบูรณ์ - แก้ไขค่า payment_type ให้ตรงกับ DB)
+// js/pos.js (ฉบับสมบูรณ์ - เพิ่ม transaction_id)
 
 document.addEventListener('DOMContentLoaded', () => {
     const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
@@ -169,6 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (cart.length === 0) return;
         closePaymentModal();
         closeChangeModal();
+
         let shiftId = sessionStorage.getItem('currentShiftId');
         if (!shiftId) {
             try {
@@ -178,8 +179,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 sessionStorage.setItem('currentShiftId', shiftId);
             } catch (error) { alert('เกิดข้อผิดพลาดในการเริ่มกะ: ' + error.message); return; }
         }
+        
+        // --- ⭐️ ส่วนที่แก้ไข ⭐️ ---
+        // 1. สร้างรหัสบิล (Transaction ID) ขึ้นมา 1 รหัสสำหรับบิลนี้
+        const transactionId = crypto.randomUUID();
+        console.log(`Creating sale with transaction ID: ${transactionId}`);
+
         try {
+            // 2. สร้าง array ของ object ที่จะ insert โดยใส่ transactionId เดียวกันให้ทุกรายการ
             const saleRecords = cart.map(item => ({
+                transaction_id: transactionId, // <-- เพิ่ม transaction_id
                 shift_id: shiftId,
                 employee_id: currentUser.id,
                 product_id: item.id,
@@ -193,6 +202,8 @@ document.addEventListener('DOMContentLoaded', () => {
             alert('เกิดข้อผิดพลาดในการบันทึกการขาย: ' + error.message);
             return;
         }
+        // --- สิ้นสุดส่วนที่แก้ไข ---
+
         try {
             const stockUpdates = cart.map(item => {
                 const newStock = (liveStocks[item.id] || 0) - item.quantity;
@@ -200,6 +211,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             await Promise.all(stockUpdates);
         } catch (error) { alert('เกิดข้อผิดพลาดในการอัปเดตสต็อก: ' + error.message); return; }
+
         alert('บันทึกการขายสำเร็จ!');
         cart = [];
         renderCart();
@@ -230,14 +242,12 @@ document.addEventListener('DOMContentLoaded', () => {
         const button = e.target.closest('.payment-option-button');
         if (button) {
             const method = button.dataset.method;
-            // V V V V V ส่วนที่แก้ไข V V V V V
             if (method === 'transfer') {
                 processSale('transfer');
             } else if (method === 'cash') {
                 closePaymentModal();
                 openChangeModal();
             }
-            // ^ ^ ^ ^ ^ ส่วนที่แก้ไข ^ ^ ^ ^ ^
         }
     });
     moneyReceivedInput.addEventListener('input', () => {
@@ -246,7 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const change = received - total;
         changeDueAmountEl.textContent = `฿${change >= 0 ? change.toFixed(2) : '0.00'}`;
     });
-    document.getElementById('confirm-payment-button').addEventListener('click', () => processSale('cash')); // V V V แก้ไขตรงนี้ด้วย
+    document.getElementById('confirm-payment-button').addEventListener('click', () => processSale('cash'));
     changeModal.addEventListener('click', e => { if (e.target.id === 'change-modal-close-button' || e.target.id === 'change-modal') closeChangeModal(); });
 
     function initializePOS() {
