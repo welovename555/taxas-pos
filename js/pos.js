@@ -1,9 +1,7 @@
-// js/pos.js (ฉบับอัปเดต - เพิ่มระบบปิดกะ)
+// js/pos.js (ฉบับสมบูรณ์ แก้ไขทุกข้อผิดพลาด)
 
 document.addEventListener('DOMContentLoaded', () => {
-    // =================================================================
     // ส่วนที่ 1: ตรวจสอบการล็อกอิน และ UI พื้นฐาน
-    // =================================================================
     const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
     if (!currentUser) {
         alert('กรุณาเข้าสู่ระบบก่อนใช้งาน');
@@ -19,9 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'flex');
     }
 
-    // =================================================================
     // ส่วนที่ 2: ระบบ POS - ตัวแปรและข้อมูล
-    // =================================================================
     const products = [
       { id: "A001", name: "น้ำดิบขวดใหญ่", category: "น้ำ", price: 40, image: "img/A001.jpg" },
       { id: "A002", name: "น้ำดิบขวดเล็ก", category: "น้ำ", price: 25, image: "img/A002.jpg" },
@@ -45,7 +41,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let liveStocks = {};
     let cart = [];
 
-    // --- UI Element References ---
     const categoryTabsContainer = document.getElementById('category-tabs');
     const productGridContainer = document.getElementById('product-grid');
     const cartItemsContainer = document.getElementById('cart-items');
@@ -60,10 +55,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadingOverlay = document.getElementById('loading-overlay');
     const endShiftButton = document.getElementById('end-shift-button');
     const shiftSummaryModal = document.getElementById('shift-summary-modal');
-
-    // =================================================================
-    // START: ฟังก์ชันทั้งหมดของระบบ
-    // =================================================================
     
     function renderCategories() {
         const categories = ['น้ำ', 'บุหรี่', 'ยา', 'อื่นๆ'];
@@ -178,7 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         const transactionId = crypto.randomUUID();
         try {
-            const saleRecords = cart.map(item => ({ transaction_id: transactionId, shift_id: shiftId, employee_id: currentUser.id, product_id: item.id, price: item.price, qty: item.quantity, payment_type: paymentMethod }));
+            const saleRecords = cart.map(item => ({ transaction_id: transactionId, shift_id: shiftId, employee_id: currentUser.id, product_id: item.id, price: item.price, qty: item.quantity, payment_type: 'cash' }));
             const { error } = await supabaseClient.from('sales').insert(saleRecords);
             if (error) throw error;
         } catch (error) { alert('เกิดข้อผิดพลาดในการบันทึกการขาย: ' + error.message); return; }
@@ -200,16 +191,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
         tomorrow.setHours(2, 0, 0, 0);
-        const { data, error } = await supabaseClient.from('sales').select('*, employees(name)').gte('created_at', today.toISOString()).lt('created_at', tomorrow.toISOString()).order('created_at', { ascending: false });
+        const { data, error } = await supabaseClient.from('sales').select('*').gte('created_at', today.toISOString()).lt('created_at', tomorrow.toISOString()).order('created_at', { ascending: false });
         if (error) {
             console.error('Error fetching sales history:', error);
-            alert('ไม่สามารถโหลดประวัติการขายได้');
+            alert('ไม่สามารถโหลดประวัติการขายได้: ' + error.message);
             return null;
         }
         const groupedSales = data.reduce((acc, sale) => {
             const txId = sale.transaction_id;
             if (!acc[txId]) {
-                acc[txId] = { items: [], total: 0, payment_type: sale.payment_type, employee_name: sale.employees ? sale.employees.name : 'N/A', created_at: sale.created_at };
+                acc[txId] = { items: [], total: 0, payment_type: sale.payment_type, employee_id: sale.employee_id, created_at: sale.created_at };
             }
             acc[txId].items.push(sale);
             acc[txId].total += sale.price * sale.qty;
@@ -231,123 +222,111 @@ document.addEventListener('DOMContentLoaded', () => {
                 const productName = productInfo ? productInfo.name : item.product_id;
                 return `${productName} x${item.qty}`;
             }).join('\n');
-            row.innerHTML = `<td>${time}</td><td class="items-cell">${itemsString}</td><td>฿${tx.total.toFixed(2)}</td><td>${tx.payment_type === 'cash' ? 'เงินสด' : 'โอนชำระ'}</td><td>${tx.employee_name}</td>`;
+            row.innerHTML = `<td>${time}</td><td class="items-cell">${itemsString}</td><td>฿${tx.total.toFixed(2)}</td><td>${tx.payment_type === 'cash' ? 'เงินสด' : 'โอนชำระ'}</td><td>${tx.employee_id}</td>`;
             historyTableBody.appendChild(row);
         });
     }
     async function displaySalesHistory() {
         loadingOverlay.style.display = 'flex';
-        const minLoadingTime = new Promise(resolve => setTimeout(resolve, 1000));
-        const fetchPromise = fetchSalesHistory();
-        const [_, transactions] = await Promise.all([minLoadingTime, fetchPromise]);
-        if (transactions) {
-            renderSalesHistory(transactions);
+        const minLoadingTime = new Promise(resolve => setTimeout(resolve, 500));
+        try {
+            const fetchPromise = fetchSalesHistory();
+            const [_, transactions] = await Promise.all([minLoadingTime, fetchPromise]);
+            if (transactions) {
+                renderSalesHistory(transactions);
+            }
+        } catch (error) {
+            console.error("An error occurred in displaySalesHistory:", error);
+            alert("เกิดข้อผิดพลาดในการแสดงผลประวัติการขาย");
+        } finally {
+            loadingOverlay.style.display = 'none';
         }
-        loadingOverlay.style.display = 'none';
     }
-
-    // --- ⭐️⭐️ ฟังก์ชันใหม่สำหรับปิดกะ ⭐️⭐️ ---
     async function endCurrentShift() {
-        if (!confirm('คุณต้องการปิดกะและสรุปยอดขายใช่หรือไม่?')) {
-            return;
-        }
-
+        if (!confirm('คุณต้องการปิดกะและสรุปยอดขายใช่หรือไม่?')) return;
         const shiftId = sessionStorage.getItem('currentShiftId');
         if (!shiftId) {
             alert('ยังไม่มีการขายเกิดขึ้นในกะนี้ ไม่สามารถสรุปยอดได้');
             return;
         }
-
         loadingOverlay.style.display = 'flex';
-
-        // 1. ดึงข้อมูลการขายทั้งหมดในกะนี้
-        const { data: sales, error: salesError } = await supabaseClient
-            .from('sales')
-            .select('*')
-            .eq('shift_id', shiftId);
-
+        const { data: sales, error: salesError } = await supabaseClient.from('sales').select('*').eq('shift_id', shiftId);
         if (salesError) {
             loadingOverlay.style.display = 'none';
             alert('เกิดข้อผิดพลาดในการดึงข้อมูลสรุปยอด: ' + salesError.message);
             return;
         }
-
-        // 2. คำนวณสรุปยอด
         const summary = sales.reduce((acc, sale) => {
             const saleTotal = sale.price * sale.qty;
             acc.total += saleTotal;
-            if (sale.payment_type === 'cash') {
-                acc.cash += saleTotal;
-            } else if (sale.payment_type === 'transfer') {
-                acc.transfer += saleTotal;
-            }
+            if (sale.payment_type === 'cash') { acc.cash += saleTotal; } 
+            else if (sale.payment_type === 'transfer') { acc.transfer += saleTotal; }
             return acc;
         }, { total: 0, cash: 0, transfer: 0 });
-
-        // 3. อัปเดตข้อมูลกะในฐานข้อมูล
-        const { error: updateError } = await supabaseClient
-            .from('shifts')
-            .update({
-                end_time: new Date().toISOString(),
-                summary_totals: summary 
-            })
-            .eq('id', shiftId);
-
+        const { error: updateError } = await supabaseClient.from('shifts').update({ end_time: new Date().toISOString(), summary_totals: summary }).eq('id', shiftId);
         if (updateError) {
             loadingOverlay.style.display = 'none';
             alert('เกิดข้อผิดพลาดในการบันทึกข้อมูลสรุปยอด: ' + updateError.message);
             return;
         }
-
-        // 4. แสดงผลสรุปใน Modal
         document.getElementById('shift-total-sales').textContent = `฿${summary.total.toFixed(2)}`;
         document.getElementById('shift-cash-sales').textContent = `฿${summary.cash.toFixed(2)}`;
         document.getElementById('shift-transfer-sales').textContent = `฿${summary.transfer.toFixed(2)}`;
-        
         loadingOverlay.style.display = 'none';
         shiftSummaryModal.style.display = 'flex';
     }
 
-
-    // --- Event Listeners & Initialization ---
     document.getElementById('sidebar-nav').addEventListener('click', e => {
         const navItem = e.target.closest('.nav-item');
         if (!navItem || navItem.classList.contains('active')) return;
         document.querySelectorAll('.nav-item').forEach(tab => tab.classList.remove('active'));
         navItem.classList.add('active');
         const tabName = navItem.dataset.tab;
+        document.querySelectorAll('.content-view').forEach(view => view.style.display = 'none');
+        const targetView = document.getElementById(tabName);
+        if (targetView) targetView.style.display = 'flex';
         if (tabName === 'history-view') {
-            document.querySelectorAll('.content-view').forEach(view => view.style.display = 'none');
-            const targetView = document.getElementById(tabName);
-            if(targetView) targetView.style.display = 'flex';
             displaySalesHistory();
-        } else {
-            loadingOverlay.style.display = 'flex';
-            setTimeout(() => {
-                document.querySelectorAll('.content-view').forEach(view => view.style.display = 'none');
-                const targetView = document.getElementById(tabName);
-                if (targetView) {
-                    targetView.style.display = 'flex';
-                }
-                loadingOverlay.style.display = 'none';
-            }, 500);
         }
     });
-
-    // ... (Event Listeners เดิมทั้งหมด) ...
-    productGridContainer.addEventListener('click', e => { const productItem = e.target.closest('.product-item'); if (productItem && !productItem.classList.contains('disabled')) { const productId = productItem.dataset.productId; const product = products.find(p => p.id === productId); if (product.prices) { openPriceModal(product); } else { addToCart(productId, product.price); } } });
+    categoryTabsContainer.addEventListener('click', e => {
+        if (e.target.classList.contains('category-tab')) {
+            document.querySelectorAll('.category-tab').forEach(tab => tab.classList.remove('active'));
+            e.target.classList.add('active');
+            renderProducts(e.target.dataset.category);
+        }
+    });
+    productGridContainer.addEventListener('click', e => {
+        const productItem = e.target.closest('.product-item');
+        if (productItem && !productItem.classList.contains('disabled')) {
+            const productId = productItem.dataset.productId;
+            const product = products.find(p => p.id === productId);
+            if (product.prices) { openPriceModal(product); } 
+            else { addToCart(productId, product.price); }
+        }
+    });
     priceModal.addEventListener('click', e => { if (e.target.id === 'modal-close-button' || e.target.id === 'multi-price-modal') closePriceModal(); });
     checkoutButton.addEventListener('click', () => { if (cart.length > 0) openPaymentModal(); });
-    paymentModal.addEventListener('click', e => { if (e.target.id === 'payment-modal-close-button' || e.target.id === 'payment-modal') { closePaymentModal(); return; } const button = e.target.closest('.payment-option-button'); if (button) { const method = button.dataset.method; if (method === 'transfer') { processSale('transfer'); } else if (method === 'cash') { closePaymentModal(); openChangeModal(); } } });
-    moneyReceivedInput.addEventListener('input', () => { const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0); const received = parseFloat(moneyReceivedInput.value) || 0; const change = received - total; changeDueAmountEl.textContent = `฿${change >= 0 ? change.toFixed(2) : '0.00'}`; });
+    paymentModal.addEventListener('click', e => {
+        if (e.target.id === 'payment-modal-close-button' || e.target.id === 'payment-modal') { closePaymentModal(); return; }
+        const button = e.target.closest('.payment-option-button');
+        if (button) {
+            const method = button.dataset.method;
+            if (method === 'transfer') { processSale('transfer'); } 
+            else if (method === 'cash') { closePaymentModal(); openChangeModal(); }
+        }
+    });
+    moneyReceivedInput.addEventListener('input', () => {
+        const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+        const received = parseFloat(moneyReceivedInput.value) || 0;
+        const change = received - total;
+        changeDueAmountEl.textContent = `฿${change >= 0 ? change.toFixed(2) : '0.00'}`;
+    });
     document.getElementById('confirm-payment-button').addEventListener('click', () => processSale('cash'));
     changeModal.addEventListener('click', e => { if (e.target.id === 'change-modal-close-button' || e.target.id === 'change-modal') closeChangeModal(); });
-
-    // --- Listener ใหม่สำหรับปุ่มปิดกะ ---
     endShiftButton.addEventListener('click', endCurrentShift);
     document.getElementById('shift-summary-close-button').addEventListener('click', () => {
         shiftSummaryModal.style.display = 'none';
-        // เคลียร์ทุกอย่างแล้วกลับไปหน้า Login
         sessionStorage.clear();
         window.location.href = 'index.html';
     });
