@@ -25,6 +25,10 @@
             </nav>
             <div class="sidebar-footer">
                 <div class="user-profile"><i class="fa-solid fa-user-circle"></i><span id="current-user-name"></span></div>
+                
+                <div class="end-shift-button" id="end-shift-button">
+                    <i class="fa-solid fa-clock"></i><span>ปิดกะและสรุปยอด</span>
+                </div>
                 <div class="logout-button" id="logout-button"><i class="fa-solid fa-right-from-bracket"></i><span>ออกจากระบบ</span></div>
             </div>
         </aside>
@@ -77,53 +81,35 @@
     <script src="js/pos.js"></script>
 
     <div id="multi-price-modal" class="modal-overlay" style="display: none;">
-        <div class="modal-content">
-            <h3 id="modal-product-name">เลือกราคา</h3>
-            <div id="modal-price-options" class="price-options-container"></div>
-            <button id="modal-close-button" class="modal-close-button">ยกเลิก</button>
-        </div>
+        <div class="modal-content"><h3 id="modal-product-name">เลือกราคา</h3><div id="modal-price-options" class="price-options-container"></div><button id="modal-close-button" class="modal-close-button">ยกเลิก</button></div>
     </div>
-
     <div id="payment-modal" class="modal-overlay" style="display: none;">
-        <div class="modal-content">
-            <h3>ช่องทางการชำระเงิน</h3>
-            <div id="payment-options" class="payment-options-container">
-                <button class="payment-option-button" data-method="cash">
-                    <i class="fa-solid fa-money-bill-wave"></i><span>เงินสด</span>
-                </button>
-                <button class="payment-option-button" data-method="transfer">
-                    <i class="fa-solid fa-mobile-screen-button"></i><span>โอนชำระ</span>
-                </button>
-            </div>
-            <button id="payment-modal-close-button" class="modal-close-button">ยกเลิก</button>
-        </div>
+        <div class="modal-content"><h3>ช่องทางการชำระเงิน</h3><div id="payment-options" class="payment-options-container"><button class="payment-option-button" data-method="cash"><i class="fa-solid fa-money-bill-wave"></i><span>เงินสด</span></button><button class="payment-option-button" data-method="transfer"><i class="fa-solid fa-mobile-screen-button"></i><span>โอนชำระ</span></button></div><button id="payment-modal-close-button" class="modal-close-button">ยกเลิก</button></div>
     </div>
-
     <div id="change-modal" class="modal-overlay" style="display: none;">
+        <div class="modal-content"><h3>รับเงินสดและคำนวณเงินทอน</h3><div class="change-details"><div class="detail-row"><span>ยอดชำระทั้งหมด:</span><span id="change-modal-total">฿0</span></div><div class="detail-row"><label for="money-received-input">รับเงินมา:</label><input type="number" id="money-received-input" placeholder="กรอกจำนวนเงิน"></div><div class="detail-row change-due"><span>เงินทอน:</span><span id="change-due-amount">฿0</span></div></div><button id="confirm-payment-button" class="checkout-button">ยืนยันการชำระเงิน</button><button id="change-modal-close-button" class="modal-close-button">ยกเลิก</button></div>
+    </div>
+    <div id="loading-overlay" class="modal-overlay" style="display: none;"><div class="spinner"></div></div>
+
+    <div id="shift-summary-modal" class="modal-overlay" style="display: none;">
         <div class="modal-content">
-            <h3>รับเงินสดและคำนวณเงินทอน</h3>
-            <div class="change-details">
+            <h3>สรุปยอดขายกะปัจจุบัน</h3>
+            <div class="shift-summary-details">
                 <div class="detail-row">
-                    <span>ยอดชำระทั้งหมด:</span>
-                    <span id="change-modal-total">฿0</span>
+                    <span>ยอดรวมทั้งหมด:</span>
+                    <span id="shift-total-sales">฿0</span>
                 </div>
                 <div class="detail-row">
-                    <label for="money-received-input">รับเงินมา:</label>
-                    <input type="number" id="money-received-input" placeholder="กรอกจำนวนเงิน">
+                    <span>- เงินสด:</span>
+                    <span id="shift-cash-sales">฿0</span>
                 </div>
-                <div class="detail-row change-due">
-                    <span>เงินทอน:</span>
-                    <span id="change-due-amount">฿0</span>
+                <div class="detail-row">
+                    <span>- โอนชำระ:</span>
+                    <span id="shift-transfer-sales">฿0</span>
                 </div>
             </div>
-            <button id="confirm-payment-button" class="checkout-button">ยืนยันการชำระเงิน</button>
-            <button id="change-modal-close-button" class="modal-close-button">ยกเลิก</button>
+            <button id="shift-summary-close-button" class="checkout-button">ตกลงและออกจากระบบ</button>
         </div>
     </div>
-    
-    <div id="loading-overlay" class="modal-overlay" style="display: none;">
-        <div class="spinner"></div>
-    </div>
-
-</body>
+    </body>
 </html>
