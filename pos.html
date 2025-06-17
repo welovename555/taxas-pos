@@ -1,111 +1,58 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TEXAS POS</title>
-
-  <!-- CSS (เพิ่มได้ภายหลังหากมี style.css) -->
-  <style>
-    body {
-      font-family: sans-serif;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      height: 100vh;
-    }
-
-    .sidebar {
-      width: 220px;
-      background: #1e1e2f;
-      color: white;
-      padding: 1rem;
-      display: flex;
-      flex-direction: column;
-      gap: 0.8rem;
-    }
-
-    .sidebar .logo {
-      font-size: 1.3rem;
-      font-weight: bold;
-      margin-bottom: 1rem;
-    }
-
-    .menu button {
-      background: none;
-      border: none;
-      color: white;
-      text-align: left;
-      padding: 0.5rem;
-      font-size: 1rem;
-      cursor: pointer;
-    }
-
-    .main-view {
-      flex: 1;
-      padding: 1rem;
-      background: #f0f2f5;
-      overflow-y: auto;
-    }
-
-    .product-item {
-      background: white;
-      padding: 1rem;
-      border-radius: 8px;
-      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-      margin-bottom: 1rem;
-    }
-
-    .product-item button {
-      margin-top: 0.5rem;
-      padding: 6px 12px;
-    }
-
-    h2 {
-      margin-top: 0;
-    }
-  </style>
-
-  <!-- Supabase SDK -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-  <!-- POS Logic -->
-  <script defer src="js/pos.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>TEXAS POS</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/pos.css"> <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 </head>
-
 <body>
-  <div class="sidebar">
-    <div class="logo">TEXAS POS</div>
-    <div class="menu">
-      <button onclick="navigate('sale')">🛒 ขายของ</button>
-      <button onclick="navigate('history')">📆 ประวัติการขาย</button>
-      <button onclick="navigate('stock-add')">📦 เพิ่มสต๊อก</button>
-      <button onclick="navigate('add-product')">➕ เพิ่มสินค้า</button>
-      <button onclick="navigate('shift')">📊 ปิดกะ</button>
-      <button onclick="toggleTheme()">🎨 เปลี่ยนธีม</button>
-      <button onclick="logout()">🚪 ออกจากระบบ</button>
+    <div id="app-container">
+        <aside id="sidebar">
+            <div class="sidebar-header">
+                <h3>TEXAS POS</h3>
+            </div>
+             <nav>
+                <ul>
+                    <li class="nav-item active" data-tab="sell-view">
+                        <i class="fa-solid fa-cart-shopping"></i><span>ขาย</span>
+                    </li>
+                    <li class="nav-item" data-tab="history-view">
+                        <i class="fa-solid fa-receipt"></i><span>ประวัติการขาย</span>
+                    </li>
+                     <li class="nav-item" data-tab="stock-view">
+                        <i class="fa-solid fa-box-archive"></i><span>จัดการสินค้า</span>
+                    </li>
+                    <li class="nav-item admin-only" data-tab="employees-view">
+                        <i class="fa-solid fa-users"></i><span>จัดการพนักงาน</span>
+                    </li>
+                </ul>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <i class="fa-solid fa-user-circle"></i>
+                    <span id="current-user-name"></span>
+                </div>
+                <div class="logout-button" id="logout-button">
+                    <i class="fa-solid fa-right-from-bracket"></i><span>ออกจากระบบ</span>
+                </div>
+            </div>
+        </aside>
+
+        <main id="main-content">
+            <section id="sell-view" class="content-view">
+                <h2>หน้าขาย (กำลังพัฒนา)</h2>
+            </section>
+             <section id="history-view" class="content-view" style="display: none;">
+                <h2>ประวัติการขาย (กำลังพัฒนา)</h2>
+            </section>
+            </main>
     </div>
-  </div>
 
-  <div class="main-view">
-    <section id="page-sale" class="page active">
-      <h2>ขายสินค้า</h2>
-      <div id="product-list"></div>
-    </section>
-  </div>
-
-  <script>
-    function navigate(page) {
-      alert("ฟีเจอร์ '" + page + "' ยังไม่เปิดใช้งานในหน้านี้");
-    }
-
-    function toggleTheme() {
-      document.body.classList.toggle("dark-mode");
-    }
-
-    function logout() {
-      alert("ออกจากระบบแล้ว");
-      window.location.href = "index.html";
-    }
-  </script>
-</body>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabaseClient.js"></script> <script src="js/pos.js"></script>             </body>
 </html>
