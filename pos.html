@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>TEXAS POS</title>
-    <link rel="stylesheet" href="css/style.css">
-    <link rel="stylesheet" href="css/pos.css"> <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="stylesheet" href="css/style.css"> <link rel="stylesheet" href="css/pos.css">   <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
@@ -27,8 +26,7 @@
                      <li class="nav-item" data-tab="stock-view">
                         <i class="fa-solid fa-box-archive"></i><span>จัดการสินค้า</span>
                     </li>
-                    <li class="nav-item admin-only" data-tab="employees-view">
-                        <i class="fa-solid fa-users"></i><span>จัดการพนักงาน</span>
+                    <li class="nav-item admin-only" data-tab="employees-view" style="display: none;"> <i class="fa-solid fa-users"></i><span>จัดการพนักงาน</span>
                     </li>
                 </ul>
             </nav>
@@ -45,14 +43,33 @@
 
         <main id="main-content">
             <section id="sell-view" class="content-view">
-                <h2>หน้าขาย (กำลังพัฒนา)</h2>
+                <div class="pos-header">
+                    <h1 class="pos-title"><span class="orange">TEXAS</span> POS</h1>
+                </div>
+                <div id="category-tabs" class="category-container">
+                    </div>
+                <div id="product-grid" class="product-grid-container">
+                    </div>
+                <div id="cart-summary" class="cart-summary-container">
+                    <div id="cart-items">
+                        <p class="empty-cart-text">ตะกร้าสินค้าว่าง</p>
+                    </div>
+                    <div class="cart-total">
+                        <span>รวม:</span>
+                        <span id="total-price">฿0</span>
+                    </div>
+                    <button id="checkout-button" class="checkout-button" disabled>รับเงิน</button>
+                </div>
             </section>
+
              <section id="history-view" class="content-view" style="display: none;">
                 <h2>ประวัติการขาย (กำลังพัฒนา)</h2>
             </section>
-            </main>
+        </main>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="js/supabaseClient.js"></script> <script src="js/pos.js"></script>             </body>
+    <script src="js/supabaseClient.js"></script>
+    <script src="js/pos.js"></script>
+</body>
 </html>
