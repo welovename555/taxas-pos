@@ -1,31 +1,21 @@
-// js/pos.js (ฉบับแก้ไข - เอา employee_name ออกจากการบันทึกการขาย)
+// js/pos.js (ฉบับแก้ไขสมบูรณ์ - ปรับ Logic การบันทึกให้ตรงกับ Schema)
 
 document.addEventListener('DOMContentLoaded', () => {
-    // =================================================================
-    // ส่วนที่ 1: ตรวจสอบการล็อกอิน และ UI พื้นฐาน
-    // =================================================================
     const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
-
     if (!currentUser) {
         alert('กรุณาเข้าสู่ระบบก่อนใช้งาน');
         window.location.href = 'index.html';
         return;
     }
-    
     document.getElementById('current-user-name').textContent = currentUser.name;
     document.getElementById('logout-button').addEventListener('click', () => {
         sessionStorage.removeItem('currentUser');
         window.location.href = 'index.html';
     });
-    
     if (currentUser.role === 'admin') {
         document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'block');
     }
 
-    // =================================================================
-    // ส่วนที่ 2: ระบบ POS
-    // =================================================================
-    
     const products = [
       { id: "A001", name: "น้ำดิบขวดใหญ่", category: "น้ำ", price: 40, image: "img/A001.jpg" },
       { id: "A002", name: "น้ำดิบขวดเล็ก", category: "น้ำ", price: 25, image: "img/A002.jpg" },
@@ -190,9 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
         closePaymentModal();
         closeChangeModal();
 
-        const total_price = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
         let shiftId = sessionStorage.getItem('currentShiftId');
-
         if (!shiftId) {
             try {
                 const { data, error } = await supabaseClient.from('shifts').insert({ employee_id: currentUser.id }).select().single();
@@ -202,23 +190,27 @@ document.addEventListener('DOMContentLoaded', () => {
             } catch (error) { alert('เกิดข้อผิดพลาดในการเริ่มกะ: ' + error.message); return; }
         }
         
+        // --- ⭐️⭐️ ส่วนที่แก้ไขใหม่ทั้งหมด ⭐️⭐️ ---
         try {
-            // --- ส่วนที่แก้ไข ---
-            const saleRecord = {
+            // 1. สร้าง array ของ object ที่จะ insert โดยวนลูปจากตะกร้า
+            const saleRecords = cart.map(item => ({
                 shift_id: shiftId,
                 employee_id: currentUser.id,
-                // employee_name: currentUser.name, // <--- เอาบรรทัดนี้ออก
-                items: cart,
-                total_price: total_price,
-                payment_method: paymentMethod
-            };
-            const { error } = await supabaseClient.from('sales').insert(saleRecord);
-            // --- สิ้นสุดส่วนที่แก้ไข ---
-            if (error) throw error;
+                product_id: item.id,
+                price: item.price,
+                qty: item.quantity,
+                payment_type: paymentMethod // ใช้ 'payment_type' ตาม schema
+            }));
+
+            // 2. Insert ข้อมูลทั้งหมดลงตาราง sales ในครั้งเดียว
+            const { error } = await supabaseClient.from('sales').insert(saleRecords);
+            if (error) throw error; // ถ้า error ให้โยนไปให้ catch block จัดการ
+            
         } catch (error) {
             alert('เกิดข้อผิดพลาดในการบันทึกการขาย: ' + error.message);
             return;
         }
+        // --- สิ้นสุดส่วนที่แก้ไข ---
 
         try {
             const stockUpdates = cart.map(item => {
