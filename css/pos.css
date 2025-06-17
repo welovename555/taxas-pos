@@ -365,3 +365,45 @@
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+
+/* === End Shift Button === */
+.end-shift-button {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-top: 10px;
+    background-color: #f5c542; /* A warning-like yellow color */
+    color: #333;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+
+.end-shift-button:hover {
+    background-color: #e0b43d;
+}
+
+.end-shift-button i {
+    width: 30px;
+    text-align: center;
+    margin-right: 10px;
+}
+
+
+/* === Shift Summary Modal === */
+.shift-summary-details {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 25px;
+    text-align: left;
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    padding: 20px 0;
+}
+
+#shift-total-sales {
+    color: var(--accent-color);
+    font-weight: 700;
+}
