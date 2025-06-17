@@ -1,4 +1,4 @@
-// js/pos.js (ฉบับสมบูรณ์ Master Version - 17 มิ.ย. 2025)
+// js/pos.js (ฉบับแก้ไข - เอา employee_name ออกจากการบันทึกการขาย)
 
 document.addEventListener('DOMContentLoaded', () => {
     // =================================================================
@@ -50,21 +50,17 @@ document.addEventListener('DOMContentLoaded', () => {
     let liveStocks = {};
     let cart = [];
 
-    // --- UI elements ---
     const categoryTabsContainer = document.getElementById('category-tabs');
     const productGridContainer = document.getElementById('product-grid');
     const cartItemsContainer = document.getElementById('cart-items');
     const totalPriceEl = document.getElementById('total-price');
     const checkoutButton = document.getElementById('checkout-button');
-    
-    // --- Modal elements ---
     const priceModal = document.getElementById('multi-price-modal');
     const paymentModal = document.getElementById('payment-modal');
     const changeModal = document.getElementById('change-modal');
     const moneyReceivedInput = document.getElementById('money-received-input');
     const changeDueAmountEl = document.getElementById('change-due-amount');
     
-    // ---- Render Functions ----
     function renderCategories() {
         const categories = ['น้ำ', 'บุหรี่', 'ยา', 'อื่นๆ'];
         categoryTabsContainer.innerHTML = '';
@@ -85,11 +81,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const item = document.createElement('div');
             item.className = 'product-item';
             item.dataset.productId = p.id;
-            
             const stock = liveStocks[p.id] ?? 'N/A';
             const isOutOfStock = stock === 'N/A' || stock <= 0;
             const displayPrice = p.price ? `฿${p.price}` : 'เลือกราคา';
-
             item.innerHTML = `
                 <img src="${p.image}" alt="${p.name}" onerror="this.src='img/placeholder.png';">
                 <div class="product-name">${p.name}</div>
@@ -122,20 +116,16 @@ document.addEventListener('DOMContentLoaded', () => {
         totalPriceEl.textContent = `฿${totalPrice}`;
     }
     
-    // ---- Data Handlers ----
     function addToCart(productId, price) {
         const product = products.find(p => p.id === productId);
         if (!product) return;
-        
         const stock = liveStocks[productId] ?? 0;
         if (stock <= 0) {
             alert('สินค้าหมดสต็อก!');
             return;
         }
-
         const cartItemId = `${productId}-${price}`;
         const existingItem = cart.find(item => item.cartId === cartItemId);
-        
         if (existingItem) {
             if(existingItem.quantity < stock) {
                 existingItem.quantity++;
@@ -149,7 +139,6 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCart();
     }
     
-    // ---- Modal Functions ----
     function openPriceModal(product) {
         document.getElementById('modal-product-name').textContent = `เลือกราคาสำหรับ: ${product.name}`;
         const optionsContainer = document.getElementById('modal-price-options');
@@ -179,7 +168,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     function closeChangeModal() { changeModal.style.display = 'none'; }
 
-    // ---- Real-time & Data Fetching ----
     async function fetchStockFromSupa() {
       const { data, error } = await supabaseClient.from('product_stocks').select('*');
       if (error) { console.error('โหลด stock ล้มเหลว:', error.message); return; }
@@ -197,7 +185,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }).subscribe();
 
-    // ---- CORE SALE PROCESS ----
     async function processSale(paymentMethod) {
         if (cart.length === 0) return;
         closePaymentModal();
@@ -216,16 +203,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         try {
-            const { error } = await supabaseClient.from('sales').insert({
+            // --- ส่วนที่แก้ไข ---
+            const saleRecord = {
                 shift_id: shiftId,
                 employee_id: currentUser.id,
-                employee_name: currentUser.name,
+                // employee_name: currentUser.name, // <--- เอาบรรทัดนี้ออก
                 items: cart,
                 total_price: total_price,
                 payment_method: paymentMethod
-            });
+            };
+            const { error } = await supabaseClient.from('sales').insert(saleRecord);
+            // --- สิ้นสุดส่วนที่แก้ไข ---
             if (error) throw error;
-        } catch (error) { alert('เกิดข้อผิดพลาดในการบันทึกการขาย: ' + error.message); return; }
+        } catch (error) {
+            alert('เกิดข้อผิดพลาดในการบันทึกการขาย: ' + error.message);
+            return;
+        }
 
         try {
             const stockUpdates = cart.map(item => {
@@ -240,7 +233,6 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCart();
     }
 
-    // ---- Event Listeners ----
     categoryTabsContainer.addEventListener('click', e => {
         if (e.target.classList.contains('category-tab')) {
             document.querySelectorAll('.category-tab').forEach(tab => tab.classList.remove('active'));
@@ -277,7 +269,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('confirm-payment-button').addEventListener('click', () => processSale('Cash'));
     changeModal.addEventListener('click', e => { if (e.target.id === 'change-modal-close-button' || e.target.id === 'change-modal') closeChangeModal(); });
 
-    // ---- Initialize POS ----
     function initializePOS() {
         renderCategories();
         const initialCategory = document.querySelector('.category-tab.active')?.dataset.category;
