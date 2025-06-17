@@ -52,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadingOverlay = document.getElementById('loading-overlay');
     const endShiftButton = document.getElementById('end-shift-button');
     const shiftSummaryModal = document.getElementById('shift-summary-modal');
-
+    
     function renderCategories() {
         const categories = ['น้ำ', 'บุหรี่', 'ยา', 'อื่นๆ'];
         categoryTabsContainer.innerHTML = '';
@@ -228,9 +228,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const minLoadingTime = new Promise(resolve => setTimeout(resolve, 1000));
         const fetchPromise = fetchSalesHistory();
         const [_, transactions] = await Promise.all([minLoadingTime, fetchPromise]);
-        if (transactions) {
-            renderSalesHistory(transactions);
-        }
+        if (transactions) { renderSalesHistory(transactions); }
         loadingOverlay.style.display = 'none';
     }
     async function endCurrentShift() {
@@ -241,30 +239,35 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         loadingOverlay.style.display = 'flex';
-        const { data: sales, error: salesError } = await supabaseClient.from('sales').select('*').eq('shift_id', shiftId);
-        if (salesError) {
+        try {
+            const { data: shiftStatus, error: statusError } = await supabaseClient.from('shifts').select('end_time').eq('id', shiftId).single();
+            if (statusError) throw new Error('ไม่พบข้อมูลกะปัจจุบันในระบบ อาจถูกลบไปแล้ว');
+            if (shiftStatus.end_time) {
+                alert('กะนี้ได้ถูกปิดไปแล้ว');
+                localStorage.removeItem('currentShiftId');
+                loadingOverlay.style.display = 'none';
+                return;
+            }
+            const { data: sales, error: salesError } = await supabaseClient.from('sales').select('*').eq('shift_id', shiftId);
+            if (salesError) throw salesError;
+            const summary = sales.reduce((acc, sale) => {
+                const saleTotal = sale.price * sale.qty;
+                acc.total += saleTotal;
+                if (sale.payment_type === 'cash') { acc.cash += saleTotal; } 
+                else if (sale.payment_type === 'transfer') { acc.transfer += saleTotal; }
+                return acc;
+            }, { total: 0, cash: 0, transfer: 0 });
+            const { error: updateError } = await supabaseClient.from('shifts').update({ end_time: new Date().toISOString(), summary_totals: summary }).eq('id', shiftId);
+            if (updateError) throw updateError;
+            document.getElementById('shift-total-sales').textContent = `฿${summary.total.toFixed(2)}`;
+            document.getElementById('shift-cash-sales').textContent = `฿${summary.cash.toFixed(2)}`;
+            document.getElementById('shift-transfer-sales').textContent = `฿${summary.transfer.toFixed(2)}`;
+            shiftSummaryModal.style.display = 'flex';
+        } catch (error) {
+            alert('เกิดข้อผิดพลาดในการปิดกะ: ' + error.message);
+        } finally {
             loadingOverlay.style.display = 'none';
-            alert('เกิดข้อผิดพลาดในการดึงข้อมูลสรุปยอด: ' + salesError.message);
-            return;
         }
-        const summary = sales.reduce((acc, sale) => {
-            const saleTotal = sale.price * sale.qty;
-            acc.total += saleTotal;
-            if (sale.payment_type === 'cash') { acc.cash += saleTotal; } 
-            else if (sale.payment_type === 'transfer') { acc.transfer += saleTotal; }
-            return acc;
-        }, { total: 0, cash: 0, transfer: 0 });
-        const { error: updateError } = await supabaseClient.from('shifts').update({ end_time: new Date().toISOString(), summary_totals: summary }).eq('id', shiftId);
-        if (updateError) {
-            loadingOverlay.style.display = 'none';
-            alert('เกิดข้อผิดพลาดในการบันทึกข้อมูลสรุปยอด: ' + updateError.message);
-            return;
-        }
-        document.getElementById('shift-total-sales').textContent = `฿${summary.total.toFixed(2)}`;
-        document.getElementById('shift-cash-sales').textContent = `฿${summary.cash.toFixed(2)}`;
-        document.getElementById('shift-transfer-sales').textContent = `฿${summary.transfer.toFixed(2)}`;
-        loadingOverlay.style.display = 'none';
-        shiftSummaryModal.style.display = 'flex';
     }
     document.getElementById('sidebar-nav').addEventListener('click', e => {
         const navItem = e.target.closest('.nav-item');
@@ -331,7 +334,6 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.clear();
         window.location.href = 'index.html';
     });
-    
     function initializePOS() {
         renderCategories();
         const initialCategory = document.querySelector('.category-tab.active')?.dataset.category;
@@ -339,6 +341,5 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCart();
         fetchStockFromSupa();
     }
-    
     initializePOS();
 });
