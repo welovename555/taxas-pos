@@ -37,31 +37,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log('Login successful for:', userData.name);
                 sessionStorage.setItem('currentUser', JSON.stringify(userData));
                 
-                // --- ส่วนที่เพิ่มเข้ามาใหม่ ---
-                // ค้นหากะที่เปิดค้างไว้ (end_time is null) ของพนักงานคนนี้
-                const { data: shiftData, error: shiftError } = await supabaseClient
-                    .from('shifts')
-                    .select('id')
-                    .eq('employee_id', userData.id)
-                    .is('end_time', null)
-                    .single();
-
-                if (shiftError && shiftError.code !== 'PGRST116') {
-                    // PGRST116 คือ error "ไม่เจอแถวข้อมูล" ซึ่งในเคสนี้ไม่ใช่ error จริง
-                    // แต่ถ้าเป็น error อื่น ให้แสดงแจ้งเตือน
-                    throw shiftError;
-                }
-
-                if (shiftData) {
-                    // ถ้าเจอกะที่เปิดค้างไว้ ให้บันทึก shift_id นั้น
-                    console.log('Found an open shift:', shiftData.id);
-                    localStorage.setItem('currentShiftId', shiftData.id);
-                } else {
-                    // ถ้าไม่เจอ ให้เคลียร์ของเก่าทิ้ง (ถ้ามี)
-                    localStorage.removeItem('currentShiftId');
-                }
+                // ไม่มีการเช็คกะค้างที่นี่อีกต่อไป
+                // ทำให้หน้าที่ของหน้านี้เรียบง่ายและลดโอกาสเกิดข้อผิดพลาด
                 
-                // ส่งผู้ใช้ไปยังหน้า POS หลัก
                 window.location.href = 'pos.html';
             }
 
