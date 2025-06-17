@@ -1,4 +1,64 @@
-// js/pos.js (ฉบับแก้ไขสมบูรณ์ - ปรับ Logic การบันทึกให้ตรงกับ Schema)
+// js/pos.js (ฉบับแก้ไข - ตรวจสอบค่า data-method ให้แม่นยำ)
+
+document.addEventListener('DOMContentLoaded', () => {
+    // ... (ส่วนที่ 1: ตรวจสอบการล็อกอิน และ UI พื้นฐาน) - ไม่เปลี่ยนแปลง ...
+
+    // =================================================================
+    // ส่วนที่ 2: ระบบ POS
+    // =================================================================
+    
+    // ... (const products, let liveStocks, let cart) - ไม่เปลี่ยนแปลง ...
+    // ... (UI elements, Modal elements) - ไม่เปลี่ยนแปลง ...
+    // ... (Render Functions, Data Handlers, Modal Functions) - ไม่เปลี่ยนแปลง ...
+    // ... (Real-time & Data Fetching) - ไม่เปลี่ยนแปลง ...
+    // ... (CORE SALE PROCESS) - ไม่เปลี่ยนแปลง ...
+
+    // ---- Event Listeners ----
+    categoryTabsContainer.addEventListener('click', e => { /* โค้ดเดิม */ });
+    productGridContainer.addEventListener('click', e => { /* โค้ดเดิม */ });
+    priceModal.addEventListener('click', e => { if (e.target.id === 'modal-close-button' || e.target.id === 'multi-price-modal') closePriceModal(); });
+    checkoutButton.addEventListener('click', () => { if (cart.length > 0) openPaymentModal(); });
+    
+    // --- ส่วนที่แก้ไข ---
+    paymentModal.addEventListener('click', e => {
+        if (e.target.id === 'payment-modal-close-button' || e.target.id === 'payment-modal') {
+            closePaymentModal();
+            return;
+        }
+        
+        const button = e.target.closest('.payment-option-button');
+        if (button) {
+            const method = button.dataset.method; // จะได้ค่า "เงินสด" หรือ "โอนชำระ"
+            
+            // ตรวจสอบค่าให้ตรงกันเป๊ะๆ
+            if (method === 'โอนชำระ') {
+                processSale('โอนชำระ');
+            } else if (method === 'เงินสด') {
+                closePaymentModal();
+                openChangeModal();
+            }
+        }
+    });
+    // --- สิ้นสุดส่วนที่แก้ไข ---
+
+    moneyReceivedInput.addEventListener('input', () => { /* โค้ดเดิม */ });
+    document.getElementById('confirm-payment-button').addEventListener('click', () => processSale('เงินสด')); // แก้ไขให้ตรงกัน
+    changeModal.addEventListener('click', e => { if (e.target.id === 'change-modal-close-button' || e.target.id === 'change-modal') closeChangeModal(); });
+
+    // ---- Initialize POS ----
+    function initializePOS() { /* โค้ดเดิม */ }
+
+    // -- คัดลอกเนื้อหาฟังก์ชันทั้งหมดที่ผมย่อไว้ `/* ... */` จากไฟล์ล่าสุด (แชท 42) มาใส่ให้ครบ --
+    // ... (Function definitions for renderCategories, renderProducts, renderCart, etc.) ...
+    // ... (The full processSale function) ...
+    
+    initializePOS();
+});
+
+
+// ===============================================================
+// ===== โค้ดฉบับเต็มสมบูรณ์ของ js/pos.js อยู่ด้านล่างนี้ครับ =====
+// ===============================================================
 
 document.addEventListener('DOMContentLoaded', () => {
     const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
@@ -30,16 +90,14 @@ document.addEventListener('DOMContentLoaded', () => {
       { id: "C002", name: "ยาฝาแดง", category: "ยา", price: 70, image: "img/C002.jpg" },
       { id: "D001", name: "น้ำตาลสด", category: "อื่นๆ", price: 12, image: "img/D001.jpg" },
       { id: "D002", name: "โค้ก", category: "อื่นๆ", price: 17, image: "img/D002.jpg" },
-      { id: "D003", "name": "อิชิตัน", category: "อื่นๆ", price: 10, image: "img/D003.jpg" },
-      { id: "D004", "name": "ใบขีด", category: "อื่นๆ", price: 15, image: "img/D004.jpg" },
-      { id: "D005", "name": "ใบครึ่งโล", category: "อื่นๆ", price: 60, image: "img/D005.jpg" },
-      { id: "D006", "name": "ใบกิโล", category: "อื่นๆ", price: 99, image: "img/D006.jpg" },
-      { id: "D007", "name": "น้ำแข็ง", category: "อื่นๆ", prices: [5, 10, 20], image: "img/D007.jpg" },
+      { id: "D003", name: "อิชิตัน", category: "อื่นๆ", price: 10, image: "img/D003.jpg" },
+      { id: "D004", name: "ใบขีด", category: "อื่นๆ", price: 15, image: "img/D004.jpg" },
+      { id: "D005", name: "ใบครึ่งโล", category: "อื่นๆ", price: 60, image: "img/D005.jpg" },
+      { id: "D006", name: "ใบกิโล", category: "อื่นๆ", price: 99, image: "img/D006.jpg" },
+      { id: "D007", name: "น้ำแข็ง", category: "อื่นๆ", prices: [5, 10, 20], image: "img/D007.jpg" },
     ];
-
     let liveStocks = {};
     let cart = [];
-
     const categoryTabsContainer = document.getElementById('category-tabs');
     const productGridContainer = document.getElementById('product-grid');
     const cartItemsContainer = document.getElementById('cart-items');
@@ -50,7 +108,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const changeModal = document.getElementById('change-modal');
     const moneyReceivedInput = document.getElementById('money-received-input');
     const changeDueAmountEl = document.getElementById('change-due-amount');
-    
     function renderCategories() {
         const categories = ['น้ำ', 'บุหรี่', 'ยา', 'อื่นๆ'];
         categoryTabsContainer.innerHTML = '';
@@ -63,7 +120,6 @@ document.addEventListener('DOMContentLoaded', () => {
             categoryTabsContainer.appendChild(tab);
         });
     }
-
     function renderProducts(category) {
         const productsToRender = products.filter(p => p.category === category);
         productGridContainer.innerHTML = '';
@@ -84,7 +140,6 @@ document.addEventListener('DOMContentLoaded', () => {
             productGridContainer.appendChild(item);
         });
     }
-
     function renderCart() {
         if (cart.length === 0) {
             cartItemsContainer.innerHTML = `<p class="empty-cart-text">ตะกร้าสินค้าว่าง</p>`;
@@ -105,7 +160,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
         totalPriceEl.textContent = `฿${totalPrice}`;
     }
-    
     function addToCart(productId, price) {
         const product = products.find(p => p.id === productId);
         if (!product) return;
@@ -117,18 +171,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const cartItemId = `${productId}-${price}`;
         const existingItem = cart.find(item => item.cartId === cartItemId);
         if (existingItem) {
-            if(existingItem.quantity < stock) {
+            if (existingItem.quantity < stock) {
                 existingItem.quantity++;
             } else {
                 alert('ไม่สามารถเพิ่มได้เนื่องจากสต็อกไม่เพียงพอ');
                 return;
             }
         } else {
-            cart.push({ ...product, price: price, quantity: 1, cartId: cartItemId });
+            cart.push({ ...product,
+                price: price,
+                quantity: 1,
+                cartId: cartItemId
+            });
         }
         renderCart();
     }
-    
     function openPriceModal(product) {
         document.getElementById('modal-product-name').textContent = `เลือกราคาสำหรับ: ${product.name}`;
         const optionsContainer = document.getElementById('modal-price-options');
@@ -145,9 +202,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         priceModal.style.display = 'flex';
     }
-    function closePriceModal() { priceModal.style.display = 'none'; }
-    function openPaymentModal() { paymentModal.style.display = 'flex'; }
-    function closePaymentModal() { paymentModal.style.display = 'none'; }
+    function closePriceModal() {
+        priceModal.style.display = 'none';
+    }
+    function openPaymentModal() {
+        paymentModal.style.display = 'flex';
+    }
+    function closePaymentModal() {
+        paymentModal.style.display = 'none';
+    }
     function openChangeModal() {
         const total = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
         document.getElementById('change-modal-total').textContent = `฿${total}`;
@@ -156,75 +219,90 @@ document.addEventListener('DOMContentLoaded', () => {
         changeModal.style.display = 'flex';
         moneyReceivedInput.focus();
     }
-    function closeChangeModal() { changeModal.style.display = 'none'; }
-
-    async function fetchStockFromSupa() {
-      const { data, error } = await supabaseClient.from('product_stocks').select('*');
-      if (error) { console.error('โหลด stock ล้มเหลว:', error.message); return; }
-      data.forEach(item => { liveStocks[item.product_id] = item.stock; });
-      const currentCategory = document.querySelector('.category-tab.active')?.dataset.category;
-      if (currentCategory) renderProducts(currentCategory);
+    function closeChangeModal() {
+        changeModal.style.display = 'none';
     }
-
-    supabaseClient.channel('stock-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'product_stocks' }, (payload) => {
+    async function fetchStockFromSupa() {
+        const {
+            data,
+            error
+        } = await supabaseClient.from('product_stocks').select('*');
+        if (error) {
+            console.error('โหลด stock ล้มเหลว:', error.message);
+            return;
+        }
+        data.forEach(item => {
+            liveStocks[item.product_id] = item.stock;
+        });
+        const currentCategory = document.querySelector('.category-tab.active')?.dataset.category;
+        if (currentCategory) renderProducts(currentCategory);
+    }
+    supabaseClient.channel('stock-changes').on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'product_stocks'
+    }, (payload) => {
         const updated = payload.new;
         if (updated) {
-          liveStocks[updated.product_id] = updated.stock;
-          const currentCategory = document.querySelector('.category-tab.active')?.dataset.category;
-          if (currentCategory) renderProducts(currentCategory);
+            liveStocks[updated.product_id] = updated.stock;
+            const currentCategory = document.querySelector('.category-tab.active')?.dataset.category;
+            if (currentCategory) renderProducts(currentCategory);
         }
     }).subscribe();
-
     async function processSale(paymentMethod) {
         if (cart.length === 0) return;
         closePaymentModal();
         closeChangeModal();
-
         let shiftId = sessionStorage.getItem('currentShiftId');
         if (!shiftId) {
             try {
-                const { data, error } = await supabaseClient.from('shifts').insert({ employee_id: currentUser.id }).select().single();
+                const {
+                    data,
+                    error
+                } = await supabaseClient.from('shifts').insert({
+                    employee_id: currentUser.id
+                }).select().single();
                 if (error) throw error;
                 shiftId = data.id;
                 sessionStorage.setItem('currentShiftId', shiftId);
-            } catch (error) { alert('เกิดข้อผิดพลาดในการเริ่มกะ: ' + error.message); return; }
+            } catch (error) {
+                alert('เกิดข้อผิดพลาดในการเริ่มกะ: ' + error.message);
+                return;
+            }
         }
-        
-        // --- ⭐️⭐️ ส่วนที่แก้ไขใหม่ทั้งหมด ⭐️⭐️ ---
         try {
-            // 1. สร้าง array ของ object ที่จะ insert โดยวนลูปจากตะกร้า
             const saleRecords = cart.map(item => ({
                 shift_id: shiftId,
                 employee_id: currentUser.id,
                 product_id: item.id,
                 price: item.price,
                 qty: item.quantity,
-                payment_type: paymentMethod // ใช้ 'payment_type' ตาม schema
+                payment_type: paymentMethod
             }));
-
-            // 2. Insert ข้อมูลทั้งหมดลงตาราง sales ในครั้งเดียว
-            const { error } = await supabaseClient.from('sales').insert(saleRecords);
-            if (error) throw error; // ถ้า error ให้โยนไปให้ catch block จัดการ
-            
+            const {
+                error
+            } = await supabaseClient.from('sales').insert(saleRecords);
+            if (error) throw error;
         } catch (error) {
             alert('เกิดข้อผิดพลาดในการบันทึกการขาย: ' + error.message);
             return;
         }
-        // --- สิ้นสุดส่วนที่แก้ไข ---
-
         try {
             const stockUpdates = cart.map(item => {
                 const newStock = (liveStocks[item.id] || 0) - item.quantity;
-                return supabaseClient.from('product_stocks').update({ stock: newStock }).eq('product_id', item.id);
+                return supabaseClient.from('product_stocks').update({
+                    stock: newStock
+                }).eq('product_id', item.id);
             });
             await Promise.all(stockUpdates);
-        } catch (error) { alert('เกิดข้อผิดพลาดในการอัปเดตสต็อก: ' + error.message); return; }
-
+        } catch (error) {
+            alert('เกิดข้อผิดพลาดในการอัปเดตสต็อก: ' + error.message);
+            return;
+        }
         alert('บันทึกการขายสำเร็จ!');
         cart = [];
         renderCart();
     }
-
     categoryTabsContainer.addEventListener('click', e => {
         if (e.target.classList.contains('category-tab')) {
             document.querySelectorAll('.category-tab').forEach(tab => tab.classList.remove('active'));
@@ -237,19 +315,33 @@ document.addEventListener('DOMContentLoaded', () => {
         if (productItem && !productItem.classList.contains('disabled')) {
             const productId = productItem.dataset.productId;
             const product = products.find(p => p.id === productId);
-            if (product.prices) { openPriceModal(product); } 
-            else { addToCart(productId, product.price); }
+            if (product.prices) {
+                openPriceModal(product);
+            } else {
+                addToCart(productId, product.price);
+            }
         }
     });
-    priceModal.addEventListener('click', e => { if (e.target.id === 'modal-close-button' || e.target.id === 'multi-price-modal') closePriceModal(); });
-    checkoutButton.addEventListener('click', () => { if (cart.length > 0) openPaymentModal(); });
+    priceModal.addEventListener('click', e => {
+        if (e.target.id === 'modal-close-button' || e.target.id === 'multi-price-modal') closePriceModal();
+    });
+    checkoutButton.addEventListener('click', () => {
+        if (cart.length > 0) openPaymentModal();
+    });
     paymentModal.addEventListener('click', e => {
-        if (e.target.id === 'payment-modal-close-button' || e.target.id === 'payment-modal') { closePaymentModal(); return; }
+        if (e.target.id === 'payment-modal-close-button' || e.target.id === 'payment-modal') {
+            closePaymentModal();
+            return;
+        }
         const button = e.target.closest('.payment-option-button');
         if (button) {
             const method = button.dataset.method;
-            if (method === 'Transfer') { processSale('Transfer'); } 
-            else if (method === 'Cash') { closePaymentModal(); openChangeModal(); }
+            if (method === 'โอนชำระ') {
+                processSale('โอนชำระ');
+            } else if (method === 'เงินสด') {
+                closePaymentModal();
+                openChangeModal();
+            }
         }
     });
     moneyReceivedInput.addEventListener('input', () => {
@@ -258,16 +350,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const change = received - total;
         changeDueAmountEl.textContent = `฿${change >= 0 ? change.toFixed(2) : '0.00'}`;
     });
-    document.getElementById('confirm-payment-button').addEventListener('click', () => processSale('Cash'));
-    changeModal.addEventListener('click', e => { if (e.target.id === 'change-modal-close-button' || e.target.id === 'change-modal') closeChangeModal(); });
+    document.getElementById('confirm-payment-button').addEventListener('click', () => processSale('เงินสด'));
+    changeModal.addEventListener('click', e => {
+        if (e.target.id === 'change-modal-close-button' || e.target.id === 'change-modal') closeChangeModal();
+    });
 
     function initializePOS() {
         renderCategories();
         const initialCategory = document.querySelector('.category-tab.active')?.dataset.category;
-        if (initialCategory) { renderProducts(initialCategory); }
+        if (initialCategory) {
+            renderProducts(initialCategory);
+        }
         renderCart();
         fetchStockFromSupa();
     }
-
     initializePOS();
 });
