@@ -1,100 +1,111 @@
-// pos.js - TEXAS POS ระบบขาย พร้อมเชื่อม Supabase เฉพาะ stock แบบ real-time
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TEXAS POS</title>
 
-// ➤ เชื่อมต่อ Supabase
-const supabaseUrl = 'https://nmlcduawkcaaglcdlhgv.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5tbGNkdWF3a2NhYWdsY2RsaGd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5MzM3MDUsImV4cCI6MjA2NTUwOTcwNX0.1NnKZ0begtYSPF7mjDip0lYoR7w1_4qHu5aeDWLWVJY';
-const supabase = supabase.createClient(supabaseUrl, supabaseKey);
-
-// ➤ สินค้าแบบ local (ใช้แสดงเท่านั้น)
-const products = [
-  { id: "A001", name: "น้ำดิบขวดใหญ่", price: 40 },
-  { id: "A002", name: "น้ำดิบขวดเล็ก", price: 25 },
-  { id: "A003", name: "น้ำผสมฝาเงินขวดเล็ก", price: 50 },
-  { id: "A004", name: "น้ำผสมฝาเงินขวดใหญ่", price: 80 },
-  { id: "A005", name: "น้ำผสมฝาแดงขวดเล็ก", price: 60 },
-  { id: "A006", name: "น้ำผสมฝาแดงขวดใหญ่", price: 90 },
-  { id: "B001", name: "บุหรี่ 40", price: 40 },
-  { id: "B002", name: "บุหรี่ 50", price: 50 },
-  { id: "B003", name: "บุหรี่ 60", price: 60 },
-  { id: "C001", name: "ยาฝาเงิน", price: 60 },
-  { id: "C002", name: "ยาฝาแดง", price: 70 },
-  { id: "D001", name: "น้ำตาลสด", price: 12 },
-  { id: "D002", name: "โค้ก", price: 17 },
-  { id: "D003", name: "อิชิตัน", price: 10 },
-  { id: "D004", name: "ใบขีด", price: 15 },
-  { id: "D005", name: "ใบครึ่งโล", price: 60 },
-  { id: "D006", name: "ใบกิโล", price: 99 },
-  { id: "D007", name: "น้ำแข็ง", price: 5 },
-];
-
-// ➤ stock ปัจจุบันจาก Supabase
-let liveStocks = {};
-
-// ➤ โหลด stock เริ่มต้น
-async function fetchStockFromSupa() {
-  const { data, error } = await supabase.from('product_stocks').select('*');
-  if (error) {
-    console.error('โหลด stock ล้มเหลว:', error.message);
-    return;
-  }
-  data.forEach(item => {
-    liveStocks[item.product_id] = item.stock;
-  });
-  renderStockToUI();
-}
-
-// ➤ subscribe การเปลี่ยนแปลง stock แบบ real-time
-supabase
-  .channel('stock-changes')
-  .on('postgres_changes', { event: '*', schema: 'public', table: 'product_stocks' }, payload => {
-    const updated = payload.new;
-    if (updated) {
-      liveStocks[updated.product_id] = updated.stock;
-      renderStockToUI();
+  <!-- CSS (เพิ่มได้ภายหลังหากมี style.css) -->
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      height: 100vh;
     }
-  })
-  .subscribe();
 
-// ➤ อัปเดต UI เมื่อ stock เปลี่ยน
-function renderStockToUI() {
-  document.querySelectorAll('.stock-amount').forEach(el => {
-    const id = el.dataset.productId;
-    el.textContent = liveStocks[id] ?? '-';
-  });
-}
+    .sidebar {
+      width: 220px;
+      background: #1e1e2f;
+      color: white;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
 
-// ➤ render รายการสินค้าในหน้าเว็บ
-function renderProducts() {
-  const container = document.getElementById('product-list');
-  container.innerHTML = '';
-  products.forEach(p => {
-    const div = document.createElement('div');
-    div.className = 'product-item';
-    div.innerHTML = `
-      <strong>${p.name}</strong><br/>
-      <span>฿${p.price}</span><br/>
-      <span class="stock-amount" data-product-id="${p.id}">-</span> ชิ้น<br/>
-      <button onclick="sellProduct('${p.id}', 1)">ขาย 1 ชิ้น</button>
-    `;
-    container.appendChild(div);
-  });
-}
+    .sidebar .logo {
+      font-size: 1.3rem;
+      font-weight: bold;
+      margin-bottom: 1rem;
+    }
 
-// ➤ เมื่อขายสินค้า
-async function sellProduct(productId, qty = 1) {
-  if (!liveStocks[productId] || liveStocks[productId] < qty) {
-    alert("สต๊อกไม่เพียงพอ");
-    return;
-  }
-  const newQty = liveStocks[productId] - qty;
-  const { error } = await supabase.from('product_stocks').update({ stock: newQty }).eq('product_id', productId);
-  if (error) {
-    alert("อัปเดต stock ล้มเหลว");
-  }
-}
+    .menu button {
+      background: none;
+      border: none;
+      color: white;
+      text-align: left;
+      padding: 0.5rem;
+      font-size: 1rem;
+      cursor: pointer;
+    }
 
-// ➤ เริ่มต้นระบบ
-document.addEventListener('DOMContentLoaded', () => {
-  renderProducts();
-  fetchStockFromSupa();
-});
+    .main-view {
+      flex: 1;
+      padding: 1rem;
+      background: #f0f2f5;
+      overflow-y: auto;
+    }
+
+    .product-item {
+      background: white;
+      padding: 1rem;
+      border-radius: 8px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+      margin-bottom: 1rem;
+    }
+
+    .product-item button {
+      margin-top: 0.5rem;
+      padding: 6px 12px;
+    }
+
+    h2 {
+      margin-top: 0;
+    }
+  </style>
+
+  <!-- Supabase SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <!-- POS Logic -->
+  <script defer src="js/pos.js"></script>
+</head>
+
+<body>
+  <div class="sidebar">
+    <div class="logo">TEXAS POS</div>
+    <div class="menu">
+      <button onclick="navigate('sale')">🛒 ขายของ</button>
+      <button onclick="navigate('history')">📆 ประวัติการขาย</button>
+      <button onclick="navigate('stock-add')">📦 เพิ่มสต๊อก</button>
+      <button onclick="navigate('add-product')">➕ เพิ่มสินค้า</button>
+      <button onclick="navigate('shift')">📊 ปิดกะ</button>
+      <button onclick="toggleTheme()">🎨 เปลี่ยนธีม</button>
+      <button onclick="logout()">🚪 ออกจากระบบ</button>
+    </div>
+  </div>
+
+  <div class="main-view">
+    <section id="page-sale" class="page active">
+      <h2>ขายสินค้า</h2>
+      <div id="product-list"></div>
+    </section>
+  </div>
+
+  <script>
+    function navigate(page) {
+      alert("ฟีเจอร์ '" + page + "' ยังไม่เปิดใช้งานในหน้านี้");
+    }
+
+    function toggleTheme() {
+      document.body.classList.toggle("dark-mode");
+    }
+
+    function logout() {
+      alert("ออกจากระบบแล้ว");
+      window.location.href = "index.html";
+    }
+  </script>
+</body>
+</html>
