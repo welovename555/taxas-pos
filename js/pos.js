@@ -1,7 +1,63 @@
+// js/pos.js (ฉบับแก้ไข - เพิ่มการตรวจสอบ Element ก่อนสลับแท็บ)
+
 document.addEventListener('DOMContentLoaded', () => {
+    // ... (ส่วนที่ 1 และ 2 ทั้งหมดเหมือนเดิมจากแชท 63) ...
+
     // =================================================================
-    // ส่วนที่ 1: ตรวจสอบการล็อกอิน และ UI พื้นฐาน
+    // START: Event Listeners & Initialization
     // =================================================================
+
+    // --- ⭐️⭐️ ส่วนที่แก้ไข ⭐️⭐️ ---
+    document.getElementById('sidebar-nav').addEventListener('click', e => {
+        const navItem = e.target.closest('.nav-item');
+        if (!navItem || navItem.classList.contains('active')) return;
+
+        document.querySelectorAll('.nav-item').forEach(tab => tab.classList.remove('active'));
+        navItem.classList.add('active');
+
+        const tabName = navItem.dataset.tab;
+        
+        // ฟังก์ชันพิเศษสำหรับหน้าประวัติ
+        if (tabName === 'history-view') {
+            document.querySelectorAll('.content-view').forEach(view => view.style.display = 'none');
+            const targetView = document.getElementById(tabName);
+            if (targetView) targetView.style.display = 'flex';
+            displaySalesHistory();
+            return; // จบการทำงานสำหรับเคสนี้
+        }
+        
+        // สำหรับ Tab อื่นๆ ทั้งหมด
+        loadingOverlay.style.display = 'flex';
+
+        setTimeout(() => {
+            document.querySelectorAll('.content-view').forEach(view => view.style.display = 'none');
+            
+            // เพิ่มการตรวจสอบว่า element นั้นมีอยู่จริงหรือไม่ ก่อนจะสั่ง .style
+            const targetView = document.getElementById(tabName);
+            if (targetView) {
+                targetView.style.display = 'flex';
+            } else {
+                console.warn(`Content view with id '${tabName}' not found!`);
+            }
+
+            loadingOverlay.style.display = 'none';
+        }, 500);
+    });
+    // --- สิ้นสุดส่วนที่แก้ไข ---
+
+    // ... (Event Listeners อื่นๆ ทั้งหมดเหมือนเดิมจากแชท 63) ...
+
+    // ... (InitializePOS function เหมือนเดิมจากแชท 63) ...
+    
+    // -- ผมจะใส่โค้ดฉบับเต็มทั้งหมดให้ด้านล่าง เพื่อความแน่นอน --
+});
+
+
+// ===============================================================
+// ===== โค้ดฉบับเต็มสมบูรณ์ของ js/pos.js อยู่ด้านล่างนี้ครับ =====
+// ===============================================================
+
+document.addEventListener('DOMContentLoaded', () => {
     const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
     if (!currentUser) {
         alert('กรุณาเข้าสู่ระบบก่อนใช้งาน');
@@ -17,9 +73,6 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'flex');
     }
 
-    // =================================================================
-    // ส่วนที่ 2: ระบบ POS - ตัวแปรและข้อมูล
-    // =================================================================
     const products = [
       { id: "A001", name: "น้ำดิบขวดใหญ่", category: "น้ำ", price: 40, image: "img/A001.jpg" },
       { id: "A002", name: "น้ำดิบขวดเล็ก", category: "น้ำ", price: 25, image: "img/A002.jpg" },
@@ -34,15 +87,14 @@ document.addEventListener('DOMContentLoaded', () => {
       { id: "C002", name: "ยาฝาแดง", category: "ยา", price: 70, image: "img/C002.jpg" },
       { id: "D001", name: "น้ำตาลสด", category: "อื่นๆ", price: 12, image: "img/D001.jpg" },
       { id: "D002", name: "โค้ก", category: "อื่นๆ", price: 17, image: "img/D002.jpg" },
-      { id: "D003", "name": "อิชิตัน", category: "อื่นๆ", price: 10, image: "img/D003.jpg" },
-      { id: "D004", "name": "ใบขีด", category: "อื่นๆ", price: 15, image: "img/D004.jpg" },
-      { id: "D005", "name": "ใบครึ่งโล", category: "อื่นๆ", price: 60, image: "img/D005.jpg" },
-      { id: "D006", "name": "ใบกิโล", category: "อื่นๆ", price: 99, image: "img/D006.jpg" },
-      { id: "D007", "name": "น้ำแข็ง", category: "อื่นๆ", prices: [5, 10, 20], image: "img/D007.jpg" },
+      { id: "D003", name: "อิชิตัน", category: "อื่นๆ", price: 10, image: "img/D003.jpg" },
+      { id: "D004", name: "ใบขีด", category: "อื่นๆ", price: 15, image: "img/D004.jpg" },
+      { id: "D005", name: "ใบครึ่งโล", category: "อื่นๆ", price: 60, image: "img/D005.jpg" },
+      { id: "D006", name: "ใบกิโล", category: "อื่นๆ", price: 99, image: "img/D006.jpg" },
+      { id: "D007", name: "น้ำแข็ง", category: "อื่นๆ", prices: [5, 10, 20], image: "img/D007.jpg" },
     ];
     let liveStocks = {};
     let cart = [];
-
     const mainContent = document.getElementById('main-content');
     const categoryTabsContainer = document.getElementById('category-tabs');
     const productGridContainer = document.getElementById('product-grid');
@@ -56,7 +108,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const changeDueAmountEl = document.getElementById('change-due-amount');
     const historyTableBody = document.getElementById('history-table-body');
     const loadingOverlay = document.getElementById('loading-overlay');
-
     function renderCategories() {
         const categories = ['น้ำ', 'บุหรี่', 'ยา', 'อื่นๆ'];
         categoryTabsContainer.innerHTML = '';
@@ -246,16 +297,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const tabName = navItem.dataset.tab;
         if (tabName === 'history-view') {
             document.querySelectorAll('.content-view').forEach(view => view.style.display = 'none');
-            document.getElementById(tabName).style.display = 'flex';
+            const targetView = document.getElementById(tabName);
+            if(targetView) targetView.style.display = 'flex';
             displaySalesHistory();
-        } else {
-            loadingOverlay.style.display = 'flex';
-            setTimeout(() => {
-                document.querySelectorAll('.content-view').forEach(view => view.style.display = 'none');
-                document.getElementById(tabName).style.display = 'flex';
-                loadingOverlay.style.display = 'none';
-            }, 500);
+            return;
         }
+        loadingOverlay.style.display = 'flex';
+        setTimeout(() => {
+            document.querySelectorAll('.content-view').forEach(view => view.style.display = 'none');
+            const targetView = document.getElementById(tabName);
+            if (targetView) {
+                targetView.style.display = 'flex';
+            } else {
+                console.warn(`Content view with id '${tabName}' not found!`);
+            }
+            loadingOverlay.style.display = 'none';
+        }, 500);
     });
     productGridContainer.addEventListener('click', e => {
         const productItem = e.target.closest('.product-item');
@@ -285,7 +342,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     document.getElementById('confirm-payment-button').addEventListener('click', () => processSale('cash'));
     changeModal.addEventListener('click', e => { if (e.target.id === 'change-modal-close-button' || e.target.id === 'change-modal') closeChangeModal(); });
-
+    
     function initializePOS() {
         renderCategories();
         const initialCategory = document.querySelector('.category-tab.active')?.dataset.category;
