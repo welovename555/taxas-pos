@@ -1,63 +1,7 @@
-// js/pos.js (ฉบับแก้ไข - เพิ่มการตรวจสอบ Element ก่อนสลับแท็บ)
+// js/pos.js (ฉบับแก้ไข - ปรับปรุงการดึงข้อมูลประวัติการขาย)
 
 document.addEventListener('DOMContentLoaded', () => {
-    // ... (ส่วนที่ 1 และ 2 ทั้งหมดเหมือนเดิมจากแชท 63) ...
-
-    // =================================================================
-    // START: Event Listeners & Initialization
-    // =================================================================
-
-    // --- ⭐️⭐️ ส่วนที่แก้ไข ⭐️⭐️ ---
-    document.getElementById('sidebar-nav').addEventListener('click', e => {
-        const navItem = e.target.closest('.nav-item');
-        if (!navItem || navItem.classList.contains('active')) return;
-
-        document.querySelectorAll('.nav-item').forEach(tab => tab.classList.remove('active'));
-        navItem.classList.add('active');
-
-        const tabName = navItem.dataset.tab;
-        
-        // ฟังก์ชันพิเศษสำหรับหน้าประวัติ
-        if (tabName === 'history-view') {
-            document.querySelectorAll('.content-view').forEach(view => view.style.display = 'none');
-            const targetView = document.getElementById(tabName);
-            if (targetView) targetView.style.display = 'flex';
-            displaySalesHistory();
-            return; // จบการทำงานสำหรับเคสนี้
-        }
-        
-        // สำหรับ Tab อื่นๆ ทั้งหมด
-        loadingOverlay.style.display = 'flex';
-
-        setTimeout(() => {
-            document.querySelectorAll('.content-view').forEach(view => view.style.display = 'none');
-            
-            // เพิ่มการตรวจสอบว่า element นั้นมีอยู่จริงหรือไม่ ก่อนจะสั่ง .style
-            const targetView = document.getElementById(tabName);
-            if (targetView) {
-                targetView.style.display = 'flex';
-            } else {
-                console.warn(`Content view with id '${tabName}' not found!`);
-            }
-
-            loadingOverlay.style.display = 'none';
-        }, 500);
-    });
-    // --- สิ้นสุดส่วนที่แก้ไข ---
-
-    // ... (Event Listeners อื่นๆ ทั้งหมดเหมือนเดิมจากแชท 63) ...
-
-    // ... (InitializePOS function เหมือนเดิมจากแชท 63) ...
-    
-    // -- ผมจะใส่โค้ดฉบับเต็มทั้งหมดให้ด้านล่าง เพื่อความแน่นอน --
-});
-
-
-// ===============================================================
-// ===== โค้ดฉบับเต็มสมบูรณ์ของ js/pos.js อยู่ด้านล่างนี้ครับ =====
-// ===============================================================
-
-document.addEventListener('DOMContentLoaded', () => {
+    // ส่วนที่ 1 และ 2 (Auth, POS Variables) ไม่มีการเปลี่ยนแปลง
     const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
     if (!currentUser) {
         alert('กรุณาเข้าสู่ระบบก่อนใช้งาน');
@@ -108,6 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const changeDueAmountEl = document.getElementById('change-due-amount');
     const historyTableBody = document.getElementById('history-table-body');
     const loadingOverlay = document.getElementById('loading-overlay');
+
     function renderCategories() {
         const categories = ['น้ำ', 'บุหรี่', 'ยา', 'อื่นๆ'];
         categoryTabsContainer.innerHTML = '';
@@ -236,6 +181,9 @@ document.addEventListener('DOMContentLoaded', () => {
         cart = [];
         renderCart();
     }
+    
+    // --- ⭐️⭐️ ส่วนที่แก้ไข ⭐️⭐️ ---
+
     async function fetchSalesHistory() {
         const today = new Date();
         if (today.getHours() < 6) { today.setDate(today.getDate() - 1); }
@@ -243,23 +191,40 @@ document.addEventListener('DOMContentLoaded', () => {
         const tomorrow = new Date(today);
         tomorrow.setDate(tomorrow.getDate() + 1);
         tomorrow.setHours(2, 0, 0, 0);
-        const { data, error } = await supabaseClient.from('sales').select('*, employees(name)').gte('created_at', today.toISOString()).lt('created_at', tomorrow.toISOString()).order('created_at', { ascending: false });
+
+        // 1. แก้ไขคำสั่ง select ให้ง่ายลง ไม่ต้อง join ข้อมูลข้ามตาราง
+        const { data, error } = await supabaseClient
+            .from('sales')
+            .select('*') // <--- เอา `employees(name)` ออก
+            .gte('created_at', today.toISOString())
+            .lt('created_at', tomorrow.toISOString())
+            .order('created_at', { ascending: false });
+
         if (error) {
             console.error('Error fetching sales history:', error);
-            alert('ไม่สามารถโหลดประวัติการขายได้');
+            alert('ไม่สามารถโหลดประวัติการขายได้: ' + error.message); // แสดง error message จริง
             return null;
         }
+
         const groupedSales = data.reduce((acc, sale) => {
             const txId = sale.transaction_id;
             if (!acc[txId]) {
-                acc[txId] = { items: [], total: 0, payment_type: sale.payment_type, employee_name: sale.employees ? sale.employees.name : 'N/A', created_at: sale.created_at };
+                acc[txId] = {
+                    items: [],
+                    total: 0,
+                    payment_type: sale.payment_type,
+                    employee_id: sale.employee_id, // <--- ใช้ employee_id แทน
+                    created_at: sale.created_at
+                };
             }
             acc[txId].items.push(sale);
             acc[txId].total += sale.price * sale.qty;
             return acc;
         }, {});
+
         return Object.values(groupedSales);
     }
+
     function renderSalesHistory(transactions) {
         historyTableBody.innerHTML = '';
         if (!transactions || transactions.length === 0) {
@@ -274,20 +239,39 @@ document.addEventListener('DOMContentLoaded', () => {
                 const productName = productInfo ? productInfo.name : item.product_id;
                 return `${productName} x${item.qty}`;
             }).join('\n');
-            row.innerHTML = `<td>${time}</td><td class="items-cell">${itemsString}</td><td>฿${tx.total.toFixed(2)}</td><td>${tx.payment_type === 'cash' ? 'เงินสด' : 'โอนชำระ'}</td><td>${tx.employee_name}</td>`;
+            
+            // 2. แสดงผลเป็น employee_id ไปก่อน
+            row.innerHTML = `
+                <td>${time}</td>
+                <td class="items-cell">${itemsString}</td>
+                <td>฿${tx.total.toFixed(2)}</td>
+                <td>${tx.payment_type === 'cash' ? 'เงินสด' : 'โอนชำระ'}</td>
+                <td>${tx.employee_id}</td> 
+            `;
             historyTableBody.appendChild(row);
         });
     }
+
     async function displaySalesHistory() {
         loadingOverlay.style.display = 'flex';
-        const minLoadingTime = new Promise(resolve => setTimeout(resolve, 1000));
-        const fetchPromise = fetchSalesHistory();
-        const [_, transactions] = await Promise.all([minLoadingTime, fetchPromise]);
-        if (transactions) {
-            renderSalesHistory(transactions);
+        const minLoadingTime = new Promise(resolve => setTimeout(resolve, 500)); // ลดเวลาลงเล็กน้อย
+        
+        // 3. ห่อด้วย try...catch เพื่อป้องกันแอปค้าง
+        try {
+            const fetchPromise = fetchSalesHistory();
+            const [_, transactions] = await Promise.all([minLoadingTime, fetchPromise]);
+            if (transactions) {
+                renderSalesHistory(transactions);
+            }
+        } catch (error) {
+            console.error("An error occurred in displaySalesHistory:", error);
+            alert("เกิดข้อผิดพลาดในการแสดงผลประวัติการขาย");
+        } finally {
+            loadingOverlay.style.display = 'none'; // ซ่อน Spinner เสมอไม่ว่าจะสำเร็จหรือล้มเหลว
         }
-        loadingOverlay.style.display = 'none';
     }
+
+    // --- สิ้นสุดส่วนที่แก้ไข ---
 
     document.getElementById('sidebar-nav').addEventListener('click', e => {
         const navItem = e.target.closest('.nav-item');
@@ -295,25 +279,18 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.nav-item').forEach(tab => tab.classList.remove('active'));
         navItem.classList.add('active');
         const tabName = navItem.dataset.tab;
+        
+        document.querySelectorAll('.content-view').forEach(view => view.style.display = 'none');
+        const targetView = document.getElementById(tabName);
+        if (targetView) targetView.style.display = 'flex';
+
         if (tabName === 'history-view') {
-            document.querySelectorAll('.content-view').forEach(view => view.style.display = 'none');
-            const targetView = document.getElementById(tabName);
-            if(targetView) targetView.style.display = 'flex';
             displaySalesHistory();
-            return;
+        } else {
+            // ไม่ต้องมี spinner สำหรับ tab อื่นๆ ที่ไม่มีการโหลดข้อมูล
         }
-        loadingOverlay.style.display = 'flex';
-        setTimeout(() => {
-            document.querySelectorAll('.content-view').forEach(view => view.style.display = 'none');
-            const targetView = document.getElementById(tabName);
-            if (targetView) {
-                targetView.style.display = 'flex';
-            } else {
-                console.warn(`Content view with id '${tabName}' not found!`);
-            }
-            loadingOverlay.style.display = 'none';
-        }, 500);
     });
+
     productGridContainer.addEventListener('click', e => {
         const productItem = e.target.closest('.product-item');
         if (productItem && !productItem.classList.contains('disabled')) {
