@@ -1,85 +1,100 @@
-<!DOCTYPE html>
-<html lang="th">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TEXAS POS</title>
-  <link rel="stylesheet" href="css/style.css" />
+// pos.js - TEXAS POS ระบบขาย พร้อมเชื่อม Supabase เฉพาะ stock แบบ real-time
 
-  <!-- Font Awesome (สำหรับไอคอนฝั่ง Tap) -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
-  <!-- Material Icons (ไอคอนแนว Google) -->
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
-</head>
-<body>
-  <div class="app-container">
+// ➤ เชื่อมต่อ Supabase
+const supabaseUrl = 'https://nmlcduawkcaaglcdlhgv.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5tbGNkdWF3a2NhYWdsY2RsaGd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5MzM3MDUsImV4cCI6MjA2NTUwOTcwNX0.1NnKZ0begtYSPF7mjDip0lYoR7w1_4qHu5aeDWLWVJY';
+const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
-    <!-- Sidebar (เมนูฝั่งซ้าย) -->
-    <aside class="sidebar">
-      <div class="logo">TEXAS POS</div>
-      <nav class="menu">
-        <button onclick="navigate('sale')" class="menu-btn"><i class="material-icons">shopping_cart</i> ขายของ</button>
-        <button onclick="navigate('history')" class="menu-btn"><i class="material-icons">history</i> ประวัติการขาย</button>
-        <button onclick="navigate('stock-add')" class="menu-btn"><i class="fas fa-box"></i> เพิ่มจำนวนสต๊อก</button>
-        <button onclick="navigate('add-product')" id="admin-only" class="menu-btn"><i class="fas fa-plus-square"></i> เพิ่มสินค้า</button>
-        <button onclick="navigate('shift')" class="menu-btn"><i class="fas fa-chart-line"></i> ปิดกะ</button>
-        <button onclick="toggleTheme()" class="menu-btn"><i class="fas fa-palette"></i> เปลี่ยนธีม</button>
-        <button onclick="logout()" class="menu-btn"><i class="fas fa-sign-out-alt"></i> ออกจากระบบ</button>
-      </nav>
-    </aside>
+// ➤ สินค้าแบบ local (ใช้แสดงเท่านั้น)
+const products = [
+  { id: "A001", name: "น้ำดิบขวดใหญ่", price: 40 },
+  { id: "A002", name: "น้ำดิบขวดเล็ก", price: 25 },
+  { id: "A003", name: "น้ำผสมฝาเงินขวดเล็ก", price: 50 },
+  { id: "A004", name: "น้ำผสมฝาเงินขวดใหญ่", price: 80 },
+  { id: "A005", name: "น้ำผสมฝาแดงขวดเล็ก", price: 60 },
+  { id: "A006", name: "น้ำผสมฝาแดงขวดใหญ่", price: 90 },
+  { id: "B001", name: "บุหรี่ 40", price: 40 },
+  { id: "B002", name: "บุหรี่ 50", price: 50 },
+  { id: "B003", name: "บุหรี่ 60", price: 60 },
+  { id: "C001", name: "ยาฝาเงิน", price: 60 },
+  { id: "C002", name: "ยาฝาแดง", price: 70 },
+  { id: "D001", name: "น้ำตาลสด", price: 12 },
+  { id: "D002", name: "โค้ก", price: 17 },
+  { id: "D003", name: "อิชิตัน", price: 10 },
+  { id: "D004", name: "ใบขีด", price: 15 },
+  { id: "D005", name: "ใบครึ่งโล", price: 60 },
+  { id: "D006", name: "ใบกิโล", price: 99 },
+  { id: "D007", name: "น้ำแข็ง", price: 5 },
+];
 
-    <!-- Main content -->
-    <main class="main-view">
+// ➤ stock ปัจจุบันจาก Supabase
+let liveStocks = {};
 
-      <!-- หน้าขายของ (default) -->
-      <section id="page-sale" class="page active">
-        <h2>เลือกหมวดหมู่สินค้า</h2>
-        <div class="category-tabs">
-          <button onclick="filterCategory('น้ำ')">น้ำ</button>
-          <button onclick="filterCategory('บุหรี่')">บุหรี่</button>
-          <button onclick="filterCategory('ยา')">ยา</button>
-          <button onclick="filterCategory('อื่นๆ')">อื่นๆ</button>
-        </div>
+// ➤ โหลด stock เริ่มต้น
+async function fetchStockFromSupa() {
+  const { data, error } = await supabase.from('product_stocks').select('*');
+  if (error) {
+    console.error('โหลด stock ล้มเหลว:', error.message);
+    return;
+  }
+  data.forEach(item => {
+    liveStocks[item.product_id] = item.stock;
+  });
+  renderStockToUI();
+}
 
-        <div class="product-list" id="product-list">
-          <!-- รายการสินค้าแสดงตรงนี้ -->
-        </div>
+// ➤ subscribe การเปลี่ยนแปลง stock แบบ real-time
+supabase
+  .channel('stock-changes')
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'product_stocks' }, payload => {
+    const updated = payload.new;
+    if (updated) {
+      liveStocks[updated.product_id] = updated.stock;
+      renderStockToUI();
+    }
+  })
+  .subscribe();
 
-        <div class="cart-summary">
-          <h3>ตะกร้า</h3>
-          <ul id="cart-items"></ul>
-          <div class="total">รวมทั้งหมด: <span id="cart-total">0</span> บาท</div>
-          <button onclick="checkout()">รับเงิน</button>
-        </div>
-      </section>
+// ➤ อัปเดต UI เมื่อ stock เปลี่ยน
+function renderStockToUI() {
+  document.querySelectorAll('.stock-amount').forEach(el => {
+    const id = el.dataset.productId;
+    el.textContent = liveStocks[id] ?? '-';
+  });
+}
 
-      <!-- หน้าประวัติการขาย -->
-      <section id="page-history" class="page">
-        <h2>ประวัติการขายของวัน</h2>
-        <div id="history-table">[อยู่ระหว่างพัฒนา]</div>
-      </section>
+// ➤ render รายการสินค้าในหน้าเว็บ
+function renderProducts() {
+  const container = document.getElementById('product-list');
+  container.innerHTML = '';
+  products.forEach(p => {
+    const div = document.createElement('div');
+    div.className = 'product-item';
+    div.innerHTML = `
+      <strong>${p.name}</strong><br/>
+      <span>฿${p.price}</span><br/>
+      <span class="stock-amount" data-product-id="${p.id}">-</span> ชิ้น<br/>
+      <button onclick="sellProduct('${p.id}', 1)">ขาย 1 ชิ้น</button>
+    `;
+    container.appendChild(div);
+  });
+}
 
-      <!-- เพิ่มจำนวนสต๊อก -->
-      <section id="page-stock-add" class="page">
-        <h2>เพิ่มจำนวนสต๊อก</h2>
-        <div>[อยู่ระหว่างพัฒนา]</div>
-      </section>
+// ➤ เมื่อขายสินค้า
+async function sellProduct(productId, qty = 1) {
+  if (!liveStocks[productId] || liveStocks[productId] < qty) {
+    alert("สต๊อกไม่เพียงพอ");
+    return;
+  }
+  const newQty = liveStocks[productId] - qty;
+  const { error } = await supabase.from('product_stocks').update({ stock: newQty }).eq('product_id', productId);
+  if (error) {
+    alert("อัปเดต stock ล้มเหลว");
+  }
+}
 
-      <!-- เพิ่มสินค้า (admin-only) -->
-      <section id="page-add-product" class="page">
-        <h2>เพิ่มสินค้าใหม่</h2>
-        <div>[อยู่ระหว่างพัฒนา]</div>
-      </section>
-
-      <!-- ปิดกะ -->
-      <section id="page-shift" class="page">
-        <h2>สรุปยอดปิดกะ</h2>
-        <div>[อยู่ระหว่างพัฒนา]</div>
-      </section>
-
-    </main>
-  </div>
-
-  <script src="js/pos.js"></script>
-</body>
-</html>
+// ➤ เริ่มต้นระบบ
+document.addEventListener('DOMContentLoaded', () => {
+  renderProducts();
+  fetchStockFromSupa();
+});
