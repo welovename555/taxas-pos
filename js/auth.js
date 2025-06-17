@@ -23,10 +23,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             // --- ส่วนที่แก้ไข ---
-            const { data, error } = await supabase
-                .from('employees')      // <--- แก้จาก 'users' เป็น 'employees'
+            // เปลี่ยนจาก supabase เป็น supabaseClient
+            const { data, error } = await supabaseClient
+                .from('employees')
                 .select('id, name, role')
-                .eq('id', code)         // <--- แก้จาก 'code' เป็น 'id'
+                .eq('id', code)
                 .single();
             // --- สิ้นสุดส่วนที่แก้ไข ---
 
@@ -39,9 +40,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (data) {
                 console.log('Login successful for:', data.name);
-                
                 sessionStorage.setItem('currentUser', JSON.stringify(data));
-                
                 window.location.href = 'pos.html';
             }
 
