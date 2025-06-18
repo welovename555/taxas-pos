@@ -33,11 +33,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadingOverlay = document.getElementById('loading-overlay');
     const endShiftButton = document.getElementById('end-shift-button');
     const shiftSummaryModal = document.getElementById('shift-summary-modal');
+    const stockSearchInput = document.getElementById('stock-search-input');
+    const stockListContainer = document.getElementById('stock-list-container');
     
     function renderCategories() {
         const categories = [...new Set(products.map(p => p.category))];
         const sortedCategories = ['น้ำ', 'บุหรี่', 'ยา', 'อื่นๆ'].filter(c => categories.includes(c));
-        
         categoryTabsContainer.innerHTML = '';
         sortedCategories.forEach((category, index) => {
             const tab = document.createElement('div');
@@ -48,7 +49,6 @@ document.addEventListener('DOMContentLoaded', () => {
             categoryTabsContainer.appendChild(tab);
         });
     }
-
     function renderProducts(category) {
         const productsToRender = products.filter(p => p.category === category);
         productGridContainer.innerHTML = '';
@@ -59,15 +59,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const stock = liveStocks[p.id] ?? 'N/A';
             const isOutOfStock = stock === 'N/A' || stock <= 0;
             const imagePath = `img/${p.id}.jpg`;
-            
             const displayPrice = p.prices ? 'เลือกราคา' : (p.price ? `฿${p.price}` : 'N/A');
-
             item.innerHTML = `<img src="${imagePath}" alt="${p.name}" onerror="this.src='img/placeholder.png';"><div class="product-name">${p.name}</div><div class="product-price">${displayPrice}</div><div class="product-stock" style="color: ${isOutOfStock ? '#fa383e' : '#888'};">สต็อก: ${stock}</div>`;
             if (isOutOfStock) item.classList.add('disabled');
             productGridContainer.appendChild(item);
         });
     }
-
     function renderCart() {
         if (cart.length === 0) {
             cartItemsContainer.innerHTML = `<p class="empty-cart-text">ตะกร้าสินค้าว่าง</p>`;
@@ -85,7 +82,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const totalPrice = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
         totalPriceEl.textContent = `฿${totalPrice}`;
     }
-
     function addToCart(productId, price) {
         const product = products.find(p => p.id === productId);
         if (!product) return;
@@ -100,7 +96,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         renderCart();
     }
-
     function openPriceModal(product) {
         document.getElementById('modal-product-name').textContent = `เลือกราคาสำหรับ: ${product.name}`;
         const optionsContainer = document.getElementById('modal-price-options');
@@ -115,7 +110,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         priceModal.style.display = 'flex';
     }
-
     function closePriceModal() { priceModal.style.display = 'none'; }
     function openPaymentModal() { paymentModal.style.display = 'flex'; }
     function closePaymentModal() { paymentModal.style.display = 'none'; }
@@ -128,23 +122,25 @@ document.addEventListener('DOMContentLoaded', () => {
         moneyReceivedInput.focus();
     }
     function closeChangeModal() { changeModal.style.display = 'none'; }
-
     async function fetchStockFromSupa() {
         const { data, error } = await supabaseClient.from('product_stocks').select('*');
         if (error) { console.error('โหลด stock ล้มเหลว:', error.message); return false; }
         data.forEach(item => { liveStocks[item.product_id] = item.stock; });
         return true;
     }
-
     supabaseClient.channel('stock-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'product_stocks' }, (payload) => {
         const updated = payload.new;
         if (updated) {
             liveStocks[updated.product_id] = updated.stock;
-            const currentCategory = document.querySelector('.category-tab.active')?.dataset.category;
-            if (currentCategory) renderProducts(currentCategory);
+            const activeTab = document.querySelector('.nav-item.active')?.dataset.tab;
+            if (activeTab === 'sell-view') {
+                const currentCategory = document.querySelector('.category-tab.active')?.dataset.category;
+                if (currentCategory) renderProducts(currentCategory);
+            } else if (activeTab === 'stock-view') {
+                renderStockManagementList(stockSearchInput.value);
+            }
         }
     }).subscribe();
-
     async function processSale(paymentMethod) {
         if (cart.length === 0) return;
         closePaymentModal();
@@ -175,7 +171,6 @@ document.addEventListener('DOMContentLoaded', () => {
         cart = [];
         renderCart();
     }
-
     async function fetchSalesHistory() {
         const today = new Date();
         if (today.getHours() < 6) { today.setDate(today.getDate() - 1); }
@@ -184,11 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
         tomorrow.setDate(tomorrow.getDate() + 1);
         tomorrow.setHours(2, 0, 0, 0);
         const { data, error } = await supabaseClient.from('sales').select('*, employees(name)').gte('created_at', today.toISOString()).lt('created_at', tomorrow.toISOString()).order('created_at', { ascending: false });
-        if (error) {
-            console.error('Error fetching sales history:', error);
-            alert('ไม่สามารถโหลดประวัติการขายได้');
-            return null;
-        }
+        if (error) { console.error('Error fetching sales history:', error); alert('ไม่สามารถโหลดประวัติการขายได้'); return null; }
         const groupedSales = data.reduce((acc, sale) => {
             const txId = sale.transaction_id;
             if (!acc[txId]) {
@@ -200,7 +191,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }, {});
         return Object.values(groupedSales);
     }
-
     function renderSalesHistory(transactions) {
         historyTableBody.innerHTML = '';
         if (!transactions || transactions.length === 0) {
@@ -219,7 +209,6 @@ document.addEventListener('DOMContentLoaded', () => {
             historyTableBody.appendChild(row);
         });
     }
-
     async function displaySalesHistory() {
         loadingOverlay.style.display = 'flex';
         const minLoadingTime = new Promise(resolve => setTimeout(resolve, 1000));
@@ -228,14 +217,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (transactions) { renderSalesHistory(transactions); }
         loadingOverlay.style.display = 'none';
     }
-
     async function endCurrentShift() {
         if (!confirm('คุณต้องการปิดกะและสรุปยอดขายใช่หรือไม่?')) return;
         const shiftId = localStorage.getItem('currentShiftId');
-        if (!shiftId) {
-            alert('ยังไม่มีการขายเกิดขึ้นในกะนี้ ไม่สามารถสรุปยอดได้');
-            return;
-        }
+        if (!shiftId) { alert('ยังไม่มีการขายเกิดขึ้นในกะนี้ ไม่สามารถสรุปยอดได้'); return; }
         loadingOverlay.style.display = 'flex';
         try {
             const { data: shiftStatus, error: statusError } = await supabaseClient.from('shifts').select('end_time').eq('id', shiftId).single();
@@ -267,25 +252,58 @@ document.addEventListener('DOMContentLoaded', () => {
             loadingOverlay.style.display = 'none';
         }
     }
+    function renderStockManagementList(searchTerm = '') {
+        const filteredProducts = products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase()));
+        stockListContainer.innerHTML = '';
+        filteredProducts.forEach(p => {
+            const stockItem = document.createElement('div');
+            stockItem.className = 'stock-item';
+            stockItem.dataset.productId = p.id;
+            stockItem.innerHTML = `
+                <div class="stock-item-info">
+                    <div class="stock-item-name">${p.name}</div>
+                    <div class="stock-item-current">สต็อกปัจจุบัน: ${liveStocks[p.id] ?? 0}</div>
+                </div>
+                <div class="stock-item-actions">
+                    <input type="number" class="add-stock-input" placeholder="จำนวน" min="1">
+                    <button class="add-stock-button">เพิ่ม</button>
+                </div>
+            `;
+            stockListContainer.appendChild(stockItem);
+        });
+    }
+    async function addStock(productId, quantityToAdd) {
+        if (isNaN(quantityToAdd) || quantityToAdd <= 0) {
+            alert('กรุณาใส่จำนวนที่ถูกต้อง');
+            return;
+        }
+        const product = products.find(p => p.id === productId);
+        if (!confirm(`ยืนยันการเพิ่มสต็อก '${product.name}' จำนวน ${quantityToAdd} ชิ้นใช่หรือไม่?`)) return;
 
+        const currentStock = liveStocks[productId] ?? 0;
+        const newStock = currentStock + quantityToAdd;
+
+        const { error } = await supabaseClient
+            .from('product_stocks')
+            .update({ stock: newStock })
+            .eq('product_id', productId);
+
+        if (error) {
+            alert('เกิดข้อผิดพลาดในการอัปเดตสต็อก: ' + error.message);
+        } else {
+            alert('อัปเดตสต็อกสำเร็จ!');
+        }
+    }
     async function fetchProducts() {
         const { data, error } = await supabaseClient.from('products').select('*');
-        if (error) {
-            console.error('Error fetching products:', error);
-            alert('ไม่สามารถโหลดข้อมูลสินค้าได้');
-            return false;
-        }
+        if (error) { console.error('Error fetching products:', error); alert('ไม่สามารถโหลดข้อมูลสินค้าได้'); return false; }
         products = data;
         return true;
     }
-    
     async function initializePOS() {
         loadingOverlay.style.display = 'flex';
         const productsLoaded = await fetchProducts();
-        if (!productsLoaded) {
-            loadingOverlay.style.display = 'none';
-            return;
-        }
+        if (!productsLoaded) { loadingOverlay.style.display = 'none'; return; }
         await fetchStockFromSupa();
         renderCategories();
         const initialCategory = document.querySelector('.category-tab.active')?.dataset.category;
@@ -305,14 +323,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const targetView = document.getElementById(tabName);
             if(targetView) targetView.style.display = 'flex';
             displaySalesHistory();
+        } else if (tabName === 'stock-view') {
+            document.querySelectorAll('.content-view').forEach(view => view.style.display = 'none');
+            const targetView = document.getElementById(tabName);
+            if(targetView) targetView.style.display = 'flex';
+            renderStockManagementList();
         } else {
             loadingOverlay.style.display = 'flex';
             setTimeout(() => {
                 document.querySelectorAll('.content-view').forEach(view => view.style.display = 'none');
                 const targetView = document.getElementById(tabName);
-                if (targetView) {
-                    targetView.style.display = 'flex';
-                }
+                if (targetView) { targetView.style.display = 'flex'; }
                 loadingOverlay.style.display = 'none';
             }, 500);
         }
@@ -331,6 +352,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const product = products.find(p => p.id === productId);
             if (product.prices) { openPriceModal(product); } 
             else { addToCart(productId, product.price); }
+        }
+    });
+    stockSearchInput.addEventListener('input', (e) => renderStockManagementList(e.target.value));
+    stockListContainer.addEventListener('click', (e) => {
+        if (e.target.classList.contains('add-stock-button')) {
+            const stockItem = e.target.closest('.stock-item');
+            const productId = stockItem.dataset.productId;
+            const quantityInput = stockItem.querySelector('.add-stock-input');
+            const quantityToAdd = parseInt(quantityInput.value, 10);
+            addStock(productId, quantityToAdd);
+            quantityInput.value = '';
         }
     });
     priceModal.addEventListener('click', e => { if (e.target.id === 'modal-close-button' || e.target.id === 'multi-price-modal') closePriceModal(); });
