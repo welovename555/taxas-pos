@@ -19,7 +19,7 @@
                 <ul>
                     <li class="nav-item active" data-tab="sell-view"><i class="fa-solid fa-cart-shopping"></i><span>ขาย</span></li>
                     <li class="nav-item" data-tab="history-view"><i class="fa-solid fa-receipt"></i><span>ประวัติการขาย</span></li>
-                    <li class="nav-item" data-tab="stock-view"><i class="fa-solid fa-box-archive"></i><span>จัดการสินค้า</span></li>
+                    <li class="nav-item admin-only" data-tab="product-admin-view" style="display: none;"><i class="fa-solid fa-pen-to-square"></i><span>จัดการสินค้า</span></li>
                     <li class="nav-item admin-only" data-tab="employees-view" style="display: none;"><i class="fa-solid fa-users"></i><span>จัดการพนักงาน</span></li>
                 </ul>
             </nav>
@@ -59,15 +59,16 @@
                     </table>
                 </div>
             </section>
-            
-            <section id="stock-view" class="content-view" style="display: none;">
-                <div class="pos-header"><h1 class="pos-title">จัดการสต็อกสินค้า</h1></div>
-                <div class="search-container">
-                    <i class="fa-solid fa-search"></i>
-                    <input type="text" id="stock-search-input" placeholder="ค้นหาชื่อสินค้า...">
+
+            <section id="product-admin-view" class="content-view" style="display: none;">
+                <div class="pos-header">
+                    <h1 class="pos-title">จัดการสินค้าทั้งหมด</h1>
                 </div>
-                <div id="stock-list-container" class="stock-list-container">
-                    </div>
+                <div class="toolbar">
+                    <button id="add-new-product-btn" class="add-new-btn"><i class="fa-solid fa-plus"></i> เพิ่มสินค้าใหม่</button>
+                </div>
+                <div id="product-admin-list" class="admin-list-container">
+                </div>
             </section>
 
             <section id="employees-view" class="content-view" style="display: none;">
@@ -94,6 +95,49 @@
     <div id="loading-overlay" class="modal-overlay" style="display: none;"><div class="spinner"></div></div>
     <div id="shift-summary-modal" class="modal-overlay" style="display: none;">
         <div class="modal-content"><h3>สรุปยอดขายกะปัจจุบัน</h3><div class="shift-summary-details"><div class="detail-row"><span>ยอดรวมทั้งหมด:</span><span id="shift-total-sales">฿0</span></div><div class="detail-row"><span>- เงินสด:</span><span id="shift-cash-sales">฿0</span></div><div class="detail-row"><span>- โอนชำระ:</span><span id="shift-transfer-sales">฿0</span></div></div><button id="shift-summary-close-button" class="checkout-button">ตกลงและออกจากระบบ</button></div>
+    </div>
+
+    <div id="product-form-modal" class="modal-overlay" style="display: none;">
+        <form class="form-modal-content" id="product-form">
+            <h3 id="product-form-title">เพิ่มสินค้าใหม่</h3>
+            <div class="form-row">
+                <label for="product-id">รหัสสินค้า (ID)</label>
+                <input type="text" id="product-id" name="id" readonly>
+            </div>
+            <div class="form-row">
+                <label for="product-name">ชื่อสินค้า</label>
+                <input type="text" id="product-name" name="name" required>
+            </div>
+            <div class="form-row">
+                <label for="product-category">หมวดหมู่</label>
+                <select id="product-category" name="category_id" required>
+                    </select>
+            </div>
+             <div class="form-row">
+                <label for="product-price">ราคา (สำหรับสินค้าทั่วไป)</label>
+                <input type="number" id="product-price" name="price">
+            </div>
+            <div class="form-row checkbox-row">
+                <input type="checkbox" id="is-multi-price">
+                <label for="is-multi-price">สินค้ามีหลายราคา</label>
+            </div>
+            <div class="form-row" id="multi-price-row" style="display: none;">
+                <label for="product-prices">รายการราคา (คั่นด้วยลูกน้ำ ,)</label>
+                <input type="text" id="product-prices" name="prices" placeholder="เช่น 10,20,30">
+            </div>
+            <div class="form-row">
+                <label>รูปภาพสินค้า</label>
+                <div class="image-uploader">
+                    <img src="img/placeholder.png" id="image-preview" class="image-preview">
+                    <input type="file" id="image-upload-input" accept="image/png, image/jpeg">
+                    <button type="button" id="image-upload-button" class="secondary-btn">เลือกรูปภาพ</button>
+                </div>
+            </div>
+            <div class="form-actions">
+                 <button type="button" id="product-form-close-btn" class="tertiary-btn">ยกเลิก</button>
+                 <button type="submit" id="product-form-save-btn" class="primary-btn">บันทึก</button>
+            </div>
+        </form>
     </div>
 
 </body>
