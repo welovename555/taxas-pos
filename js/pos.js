@@ -1,10 +1,17 @@
 document.addEventListener('DOMContentLoaded', () => {
     const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
+
     if (!currentUser) {
         alert('กรุณาเข้าสู่ระบบก่อนใช้งาน');
         window.location.href = 'index.html';
         return;
     }
+
+    // --- นี่คือบรรทัดที่เพิ่มเข้ามา ---
+    document.getElementById('app-container').classList.add('loaded');
+
+
+    // --- ส่วนที่เหลือของโค้ดเหมือนเดิมทั้งหมด ---
     document.getElementById('current-user-name').textContent = currentUser.name;
     document.getElementById('logout-button').addEventListener('click', () => {
         sessionStorage.clear();
@@ -57,10 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
             item.dataset.productId = p.id;
             const stock = liveStocks[p.id] ?? 'N/A';
             const isOutOfStock = stock === 'N/A' || stock <= 0;
-            
-            // --- นี่คือบรรทัดที่แก้ไข ---
             const imagePath = `img/${p.id}.jpg`; 
-            
             const displayPrice = p.prices ? 'เลือกราคา' : (p.price ? `฿${p.price}` : 'N/A');
             item.innerHTML = `<img src="${imagePath}" alt="${p.name}" onerror="this.src='img/placeholder.png';"><div class="product-name">${p.name}</div><div class="product-price">${displayPrice}</div><div class="product-stock" style="color: ${isOutOfStock ? '#fa383e' : '#888'};">สต็อก: ${stock}</div>`;
             if (isOutOfStock) item.classList.add('disabled');
