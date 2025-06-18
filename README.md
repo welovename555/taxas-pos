@@ -1,5 +1,5 @@
 # TEXAS POS - Web-based Point of Sale System
-
+ 
 โปรเจกต์เว็บแอปพลิเคชันขายหน้าร้าน (Point of Sale) ที่เน้นการใช้งานบนมือถือ (Mobile-first) สร้างด้วย Vanilla JavaScript และเชื่อมต่อกับ Supabase สำหรับจัดการข้อมูลสำคัญแบบ Real-time
 
 ## ✨ คุณสมบัติหลัก (Key Features)
