@@ -19,9 +19,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let liveStocks = {};
     let cart = [];
     let employeesList = [];
-    let isEditMode = false;
-    let editingProductId = null;
-    let selectedFile = null;
 
     const categoryTabsContainer = document.getElementById('category-tabs');
     const productGridContainer = document.getElementById('product-grid');
@@ -37,24 +34,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadingOverlay = document.getElementById('loading-overlay');
     const endShiftButton = document.getElementById('end-shift-button');
     const shiftSummaryModal = document.getElementById('shift-summary-modal');
-    const stockSearchInput = document.getElementById('stock-search-input');
-    const stockListContainer = document.getElementById('stock-list-container');
-    const productAdminListContainer = document.getElementById('product-admin-list');
-    const addNewProductBtn = document.getElementById('add-new-product-btn');
-    const productFormModal = document.getElementById('product-form-modal');
-    const productForm = document.getElementById('product-form');
-    const productFormTitle = document.getElementById('product-form-title');
-    const productIdInput = document.getElementById('product-id');
-    const productNameInput = document.getElementById('product-name');
-    const productCategorySelect = document.getElementById('product-category');
-    const productPriceInput = document.getElementById('product-price');
-    const isMultiPriceCheckbox = document.getElementById('is-multi-price');
-    const multiPriceRow = document.getElementById('multi-price-row');
-    const productPricesInput = document.getElementById('product-prices');
-    const imagePreview = document.getElementById('image-preview');
-    const imageUploadInput = document.getElementById('image-upload-input');
-    const imageUploadButton = document.getElementById('image-upload-button');
-
+    
     function renderCategories() {
         const categories = [...new Set(products.map(p => p.category))];
         const sortedCategories = ['น้ำ', 'บุหรี่', 'ยา', 'อื่นๆ'].filter(c => categories.includes(c));
@@ -67,7 +47,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (index === 0) tab.classList.add('active');
             categoryTabsContainer.appendChild(tab);
         });
-        productCategorySelect.innerHTML = sortedCategories.map(c => `<option value="${c}">${c}</option>`).join('');
     }
     function renderProducts(categoryName) {
         const productsToRender = products.filter(p => p.category === categoryName);
@@ -78,7 +57,10 @@ document.addEventListener('DOMContentLoaded', () => {
             item.dataset.productId = p.id;
             const stock = liveStocks[p.id] ?? 'N/A';
             const isOutOfStock = stock === 'N/A' || stock <= 0;
-            const imagePath = p.image_url || `img/placeholder.png`;
+            
+            // --- นี่คือบรรทัดที่แก้ไข ---
+            const imagePath = `img/${p.id}.jpg`; 
+            
             const displayPrice = p.prices ? 'เลือกราคา' : (p.price ? `฿${p.price}` : 'N/A');
             item.innerHTML = `<img src="${imagePath}" alt="${p.name}" onerror="this.src='img/placeholder.png';"><div class="product-name">${p.name}</div><div class="product-price">${displayPrice}</div><div class="product-stock" style="color: ${isOutOfStock ? '#fa383e' : '#888'};">สต็อก: ${stock}</div>`;
             if (isOutOfStock) item.classList.add('disabled');
@@ -172,8 +154,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (activeTab === 'sell-view') {
                 const currentCategory = document.querySelector('.category-tab.active')?.dataset.category;
                 if (currentCategory) renderProducts(currentCategory);
-            } else if (activeTab === 'stock-view') {
-                renderStockManagementList(stockSearchInput.value);
             }
         }
     }).subscribe();
@@ -299,71 +279,22 @@ document.addEventListener('DOMContentLoaded', () => {
             loadingOverlay.style.display = 'none';
         }
     }
-    function renderStockManagementList(searchTerm = '') { const filteredProducts = products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase())); stockListContainer.innerHTML = ''; filteredProducts.forEach(p => { const stockItem = document.createElement('div'); stockItem.className = 'stock-item'; stockItem.dataset.productId = p.id; stockItem.innerHTML = `<div class="stock-item-info"><div class="stock-item-name">${p.name}</div><div class="stock-item-current">สต็อกปัจจุบัน: ${liveStocks[p.id] ?? 0}</div></div><div class="stock-item-actions"><input type="number" class="add-stock-input" placeholder="จำนวน" min="1"><button class="add-stock-button">เพิ่ม</button></div>`; stockListContainer.appendChild(stockItem); }); }
-    async function addStock(productId, quantityToAdd) { if (isNaN(quantityToAdd) || quantityToAdd <= 0) { alert('กรุณาใส่จำนวนที่ถูกต้อง'); return; } const product = products.find(p => p.id === productId); if (!confirm(`ยืนยันการเพิ่มสต็อก '${product.name}' จำนวน ${quantityToAdd} ชิ้นใช่หรือไม่?`)) return; const currentStock = liveStocks[productId] ?? 0; const newStock = currentStock + quantityToAdd; const { error } = await supabaseClient.from('product_stocks').update({ stock: newStock }).eq('product_id', productId); if (error) { alert('เกิดข้อผิดพลาดในการอัปเดตสต็อก: ' + error.message); } else { alert('อัปเดตสต็อกสำเร็จ!'); } }
-    async function handleProductFormSubmit(event) {
-        event.preventDefault();
-        loadingOverlay.style.display = 'flex';
-        const formData = new FormData(productForm);
-        const categoryName = formData.get('category');
-        const categoryData = categoriesList.find(c => c.name === categoryName);
-        const categoryId = categoryData ? categoryData.id : null;
-        const productId = isEditMode ? editingProductId : await generateNewProductId(categoryId);
-        let publicUrl = isEditMode ? products.find(p=>p.id === editingProductId).image_url : null;
-        try {
-            if (selectedFile) {
-                const filePath = `${productId}.${selectedFile.name.split('.').pop()}`;
-                const { error: uploadError } = await supabaseClient.storage.from('product-images').upload(filePath, selectedFile, { upsert: true });
-                if (uploadError) throw uploadError;
-                const { data: urlData } = supabaseClient.storage.from('product-images').getPublicUrl(filePath);
-                publicUrl = urlData.publicUrl;
-            }
-            const dataToSave = { id: productId, name: formData.get('name'), category_id: categoryId, price: isMultiPriceCheckbox.checked ? null : parseFloat(formData.get('price')), prices: isMultiPriceCheckbox.checked ? formData.get('prices').split(',').map(Number) : null, image_url: publicUrl };
-            if (isEditMode) {
-                const { error } = await supabaseClient.from('products').update(dataToSave).eq('id', editingProductId);
-                if (error) throw error;
-            } else {
-                const { error: productError } = await supabaseClient.from('products').insert(dataToSave);
-                if (productError) throw productError;
-                const { error: stockError } = await supabaseClient.from('product_stocks').insert({ product_id: productId, stock: 0 });
-                if (stockError) throw stockError;
-            }
-            alert(`บันทึกสินค้า '${dataToSave.name}' สำเร็จ!`);
-            productFormModal.style.display = 'none';
-            await initializePOS(); 
-            renderAdminProductList();
-        } catch (error) {
-            console.error('Error saving product:', error);
-            alert('เกิดข้อผิดพลาดในการบันทึกสินค้า: ' + error.message);
-        } finally {
-            loadingOverlay.style.display = 'none';
-        }
-    }
-    async function generateNewProductId(categoryId) {
-        const categoryPrefixMap = { 'C001': 'CIG', 'C002': 'MED', 'C003': 'A', 'C004': 'B' };
-        const prefix = categoryPrefixMap[categoryId] || 'P';
-        const { data, error } = await supabaseClient.from('products').select('id').like('id', `${prefix}%`).order('id', { ascending: false }).limit(1);
-        if (error) { console.error(error); return `${prefix}001`; }
-        if (data.length === 0) { return `${prefix}001`; }
-        const lastId = data[0].id;
-        const lastNumber = parseInt(lastId.replace(prefix, ''), 10);
-        const newNumber = lastNumber + 1;
-        return `${prefix}${String(newNumber).padStart(3, '0')}`;
-    }
     
-    document.getElementById('sidebar-nav').addEventListener('click', e => { const navItem = e.target.closest('.nav-item'); if (!navItem || navItem.classList.contains('active')) return; document.querySelectorAll('.nav-item').forEach(tab => tab.classList.remove('active')); navItem.classList.add('active'); const tabName = navItem.dataset.tab; document.querySelectorAll('.content-view').forEach(view => view.style.display = 'none'); const targetView = document.getElementById(tabName); if (targetView) targetView.style.display = 'flex'; if (tabName === 'history-view') { displaySalesHistory(); } else if (tabName === 'product-admin-view') { renderAdminProductList(); } });
+    document.getElementById('sidebar-nav').addEventListener('click', e => {
+        const navItem = e.target.closest('.nav-item');
+        if (!navItem || navItem.classList.contains('active')) return;
+        document.querySelectorAll('.nav-item').forEach(tab => tab.classList.remove('active'));
+        navItem.classList.add('active');
+        const tabName = navItem.dataset.tab;
+        document.querySelectorAll('.content-view').forEach(view => view.style.display = 'none');
+        const targetView = document.getElementById(tabName);
+        if (targetView) targetView.style.display = 'flex';
+        if (tabName === 'history-view') {
+            displaySalesHistory();
+        }
+    });
     categoryTabsContainer.addEventListener('click', e => { if (e.target.classList.contains('category-tab')) { document.querySelectorAll('.category-tab').forEach(tab => tab.classList.remove('active')); e.target.classList.add('active'); renderProducts(e.target.dataset.category); } });
     productGridContainer.addEventListener('click', e => { const productItem = e.target.closest('.product-item'); if (productItem && !productItem.classList.contains('disabled')) { const productId = productItem.dataset.productId; const product = products.find(p => p.id === productId); if (product.prices) { openPriceModal(product); } else { addToCart(productId, product.price); } } });
-    stockSearchInput.addEventListener('input', (e) => renderStockManagementList(e.target.value));
-    stockListContainer.addEventListener('click', (e) => { if (e.target.classList.contains('add-stock-button')) { const stockItem = e.target.closest('.stock-item'); const productId = stockItem.dataset.productId; const quantityInput = stockItem.querySelector('.add-stock-input'); const quantityToAdd = parseInt(quantityInput.value, 10); addStock(productId, quantityToAdd); quantityInput.value = ''; } });
-    addNewProductBtn.addEventListener('click', () => openProductForm('add'));
-    productAdminListContainer.addEventListener('click', e => { if (e.target.classList.contains('edit-btn')) { const productId = e.target.dataset.productId; const productToEdit = products.find(p => p.id === productId); if (productToEdit) { openProductForm('edit', productToEdit); } } });
-    imageUploadButton.addEventListener('click', () => imageUploadInput.click());
-    imageUploadInput.addEventListener('change', (e) => { if (e.target.files && e.target.files[0]) { selectedFile = e.target.files[0]; const reader = new FileReader(); reader.onload = (event) => { imagePreview.src = event.target.result; }; reader.readAsDataURL(selectedFile); } });
-    isMultiPriceCheckbox.addEventListener('change', (e) => { const isChecked = e.target.checked; multiPriceRow.style.display = isChecked ? 'block' : 'none'; productPriceInput.disabled = isChecked; if (isChecked) productPriceInput.value = ''; });
-    productCategorySelect.addEventListener('change', async (e) => { if (!isEditMode) { const categoryName = e.target.value; const { data } = await supabaseClient.from('categories').select('id').eq('name', categoryName).single(); if(data) { const categoryId = data.id; productIdInput.value = 'กำลังสร้าง...'; productIdInput.value = await generateNewProductId(categoryId); } } });
-    productForm.addEventListener('submit', handleProductFormSubmit);
-    document.getElementById('product-form-close-btn').addEventListener('click', () => productFormModal.style.display = 'none');
     priceModal.addEventListener('click', e => { if (e.target.id === 'modal-close-button' || e.target.id === 'multi-price-modal') closePriceModal(); });
     checkoutButton.addEventListener('click', () => { if (cart.length > 0) openPaymentModal(); });
     paymentModal.addEventListener('click', e => { if (e.target.id === 'payment-modal-close-button' || e.target.id === 'payment-modal') { closePaymentModal(); return; } const button = e.target.closest('.payment-option-button'); if (button) { const method = button.dataset.method; if (method === 'transfer') { processSale('transfer'); } else if (method === 'cash') { closePaymentModal(); openChangeModal(); } } });
@@ -372,6 +303,22 @@ document.addEventListener('DOMContentLoaded', () => {
     changeModal.addEventListener('click', e => { if (e.target.id === 'change-modal-close-button' || e.target.id === 'change-modal') closeChangeModal(); });
     endShiftButton.addEventListener('click', endCurrentShift);
     document.getElementById('shift-summary-close-button').addEventListener('click', () => { shiftSummaryModal.style.display = 'none'; sessionStorage.clear(); localStorage.clear(); window.location.href = 'index.html'; });
+    
+    async function initializePOS() {
+        loadingOverlay.style.display = 'flex';
+        const [productsLoaded, employeesLoaded] = await Promise.all([fetchProducts(), fetchEmployees()]);
+        if (!productsLoaded || !employeesLoaded) {
+            loadingOverlay.style.display = 'none';
+            alert('เกิดข้อผิดพลาดในการโหลดข้อมูลเริ่มต้น');
+            return;
+        }
+        await fetchStockFromSupa();
+        renderCategories();
+        const initialCategory = document.querySelector('.category-tab.active')?.dataset.category;
+        if (initialCategory) { renderProducts(initialCategory); }
+        renderCart();
+        loadingOverlay.style.display = 'none';
+    }
     
     initializePOS();
 });
