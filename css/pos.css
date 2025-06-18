@@ -490,3 +490,177 @@
 .stock-item-actions button:hover {
     background-color: #218838;
 }
+
+/* === Admin: Product Management View === */
+
+.toolbar {
+    padding: 15px 25px;
+    border-bottom: 1px solid var(--border-color);
+    background-color: var(--bg-color-light);
+}
+
+.add-new-btn {
+    padding: 10px 20px;
+    font-size: 16px;
+    font-weight: 500;
+    font-family: var(--primary-font);
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color 0.2s;
+}
+
+.add-new-btn:hover {
+    background-color: #166fe5;
+}
+
+.admin-list-container {
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+.admin-list-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px 25px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.admin-list-item:last-child {
+    border-bottom: none;
+}
+
+.admin-item-info {
+    flex-grow: 1;
+}
+
+.admin-item-name {
+    font-weight: 500;
+}
+
+.admin-item-id {
+    font-size: 13px;
+    color: var(--secondary-text-color);
+    font-family: monospace;
+}
+
+.edit-btn {
+    padding: 8px 15px;
+    font-family: var(--primary-font);
+    font-size: 14px;
+    background-color: #e4e6eb;
+    color: #333;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+
+/* === Admin: Product Form Modal === */
+
+.form-modal-content {
+    background-color: white;
+    padding: 25px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 500px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+}
+
+.form-modal-content h3 {
+    margin-top: 0;
+    margin-bottom: 25px;
+    text-align: center;
+}
+
+.form-row {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 20px;
+}
+
+.form-row label {
+    font-weight: 500;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.form-row input[type="text"],
+.form-row input[type="number"],
+.form-row select {
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 16px;
+    font-family: var(--primary-font);
+}
+
+.form-row input[readonly] {
+    background-color: #f0f2f5;
+    cursor: not-allowed;
+}
+
+.checkbox-row {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+}
+
+.image-uploader {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 10px;
+    border: 1px dashed var(--border-color);
+    border-radius: 8px;
+}
+
+.image-preview {
+    width: 100px;
+    height: 100px;
+    border-radius: 6px;
+    object-fit: cover; /* or contain, depending on preference */
+    border: 1px solid var(--border-color);
+    background-color: #f0f2f5;
+}
+
+.image-uploader input[type="file"] {
+    display: none;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 30px;
+}
+
+.primary-btn, .secondary-btn, .tertiary-btn {
+    padding: 12px 25px;
+    font-size: 16px;
+    font-weight: 500;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+}
+
+.primary-btn {
+    background-color: var(--accent-color);
+    color: white;
+}
+
+.secondary-btn {
+    background-color: #e4e6eb;
+    color: #333;
+}
+
+.tertiary-btn {
+    background-color: transparent;
+    color: var(--secondary-text-color);
+}
