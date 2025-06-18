@@ -1,7 +1,4 @@
-// js/pos.js (ฉบับแก้ไข Bug ที่ทำให้หน้าไม่โหลด)
-
 document.addEventListener('DOMContentLoaded', () => {
-    // ส่วนที่ 1: ตรวจสอบการล็อกอิน และ UI พื้นฐาน
     const currentUser = JSON.parse(sessionStorage.getItem('currentUser'));
     if (!currentUser) {
         alert('กรุณาเข้าสู่ระบบก่อนใช้งาน');
@@ -18,13 +15,14 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'flex');
     }
 
-    // ส่วนที่ 2: ระบบ POS - ตัวแปรและข้อมูล
     let products = [];
     let liveStocks = {};
     let cart = [];
     let employeesList = [];
+    let isEditMode = false;
+    let editingProductId = null;
+    let selectedFile = null;
 
-    // --- UI Element References ---
     const categoryTabsContainer = document.getElementById('category-tabs');
     const productGridContainer = document.getElementById('product-grid');
     const cartItemsContainer = document.getElementById('cart-items');
@@ -57,14 +55,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const imageUploadInput = document.getElementById('image-upload-input');
     const imageUploadButton = document.getElementById('image-upload-button');
 
-    let isEditMode = false;
-    let editingProductId = null;
-    let selectedFile = null;
-    
     function renderCategories() {
         const categories = [...new Set(products.map(p => p.category))];
         const sortedCategories = ['น้ำ', 'บุหรี่', 'ยา', 'อื่นๆ'].filter(c => categories.includes(c));
-        
         categoryTabsContainer.innerHTML = '';
         sortedCategories.forEach((category, index) => {
             const tab = document.createElement('div');
@@ -74,7 +67,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (index === 0) tab.classList.add('active');
             categoryTabsContainer.appendChild(tab);
         });
-        
         productCategorySelect.innerHTML = sortedCategories.map(c => `<option value="${c}">${c}</option>`).join('');
     }
     function renderProducts(categoryName) {
@@ -150,11 +142,27 @@ document.addEventListener('DOMContentLoaded', () => {
         moneyReceivedInput.focus();
     }
     function closeChangeModal() { changeModal.style.display = 'none'; }
+    async function fetchProducts() {
+        const { data, error } = await supabaseClient.from('products').select('*').order('id', { ascending: true });
+        if (error) { console.error('Error fetching products:', error); alert('ไม่สามารถโหลดข้อมูลสินค้าได้'); return false; }
+        products = data;
+        return true;
+    }
     async function fetchStockFromSupa() {
         const { data, error } = await supabaseClient.from('product_stocks').select('*');
         if (error) { console.error('โหลด stock ล้มเหลว:', error.message); return false; }
         data.forEach(item => { liveStocks[item.product_id] = item.stock; });
         return true;
+    }
+    async function fetchEmployees() {
+        const { data, error } = await supabaseClient.from('employees').select('id, name');
+        if (error) { console.error('Error fetching employees:', error); return false; }
+        employeesList = data;
+        return true;
+    }
+    function getEmployeeNameById(id) {
+        const employee = employeesList.find(e => e.id === id);
+        return employee ? employee.name : id;
     }
     supabaseClient.channel('stock-changes').on('postgres_changes', { event: '*', schema: 'public', table: 'product_stocks' }, (payload) => {
         const updated = payload.new;
@@ -198,16 +206,6 @@ document.addEventListener('DOMContentLoaded', () => {
         alert('บันทึกการขายสำเร็จ!');
         cart = [];
         renderCart();
-    }
-    async function fetchEmployees() {
-        const { data, error } = await supabaseClient.from('employees').select('id, name');
-        if (error) { console.error('Error fetching employees:', error); return false; }
-        employeesList = data;
-        return true;
-    }
-    function getEmployeeNameById(id) {
-        const employee = employeesList.find(e => e.id === id);
-        return employee ? employee.name : id;
     }
     async function fetchSalesHistory() {
         const today = new Date();
@@ -303,32 +301,56 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     function renderStockManagementList(searchTerm = '') { const filteredProducts = products.filter(p => p.name.toLowerCase().includes(searchTerm.toLowerCase())); stockListContainer.innerHTML = ''; filteredProducts.forEach(p => { const stockItem = document.createElement('div'); stockItem.className = 'stock-item'; stockItem.dataset.productId = p.id; stockItem.innerHTML = `<div class="stock-item-info"><div class="stock-item-name">${p.name}</div><div class="stock-item-current">สต็อกปัจจุบัน: ${liveStocks[p.id] ?? 0}</div></div><div class="stock-item-actions"><input type="number" class="add-stock-input" placeholder="จำนวน" min="1"><button class="add-stock-button">เพิ่ม</button></div>`; stockListContainer.appendChild(stockItem); }); }
     async function addStock(productId, quantityToAdd) { if (isNaN(quantityToAdd) || quantityToAdd <= 0) { alert('กรุณาใส่จำนวนที่ถูกต้อง'); return; } const product = products.find(p => p.id === productId); if (!confirm(`ยืนยันการเพิ่มสต็อก '${product.name}' จำนวน ${quantityToAdd} ชิ้นใช่หรือไม่?`)) return; const currentStock = liveStocks[productId] ?? 0; const newStock = currentStock + quantityToAdd; const { error } = await supabaseClient.from('product_stocks').update({ stock: newStock }).eq('product_id', productId); if (error) { alert('เกิดข้อผิดพลาดในการอัปเดตสต็อก: ' + error.message); } else { alert('อัปเดตสต็อกสำเร็จ!'); } }
-    async function fetchProducts() {
-        const { data, error } = await supabaseClient.from('products').select('*').order('id', { ascending: true });
-        if (error) {
-            console.error('Error fetching products:', error);
-            alert('ไม่สามารถโหลดข้อมูลสินค้าได้');
-            return false;
-        }
-        products = data;
-        return true;
-    }
-    async function initializePOS() {
+    async function handleProductFormSubmit(event) {
+        event.preventDefault();
         loadingOverlay.style.display = 'flex';
-        const [productsLoaded, employeesLoaded] = await Promise.all([fetchProducts(), fetchEmployees()]);
-        if (!productsLoaded || !employeesLoaded) {
+        const formData = new FormData(productForm);
+        const categoryName = formData.get('category');
+        const categoryData = categoriesList.find(c => c.name === categoryName);
+        const categoryId = categoryData ? categoryData.id : null;
+        const productId = isEditMode ? editingProductId : await generateNewProductId(categoryId);
+        let publicUrl = isEditMode ? products.find(p=>p.id === editingProductId).image_url : null;
+        try {
+            if (selectedFile) {
+                const filePath = `${productId}.${selectedFile.name.split('.').pop()}`;
+                const { error: uploadError } = await supabaseClient.storage.from('product-images').upload(filePath, selectedFile, { upsert: true });
+                if (uploadError) throw uploadError;
+                const { data: urlData } = supabaseClient.storage.from('product-images').getPublicUrl(filePath);
+                publicUrl = urlData.publicUrl;
+            }
+            const dataToSave = { id: productId, name: formData.get('name'), category_id: categoryId, price: isMultiPriceCheckbox.checked ? null : parseFloat(formData.get('price')), prices: isMultiPriceCheckbox.checked ? formData.get('prices').split(',').map(Number) : null, image_url: publicUrl };
+            if (isEditMode) {
+                const { error } = await supabaseClient.from('products').update(dataToSave).eq('id', editingProductId);
+                if (error) throw error;
+            } else {
+                const { error: productError } = await supabaseClient.from('products').insert(dataToSave);
+                if (productError) throw productError;
+                const { error: stockError } = await supabaseClient.from('product_stocks').insert({ product_id: productId, stock: 0 });
+                if (stockError) throw stockError;
+            }
+            alert(`บันทึกสินค้า '${dataToSave.name}' สำเร็จ!`);
+            productFormModal.style.display = 'none';
+            await initializePOS(); 
+            renderAdminProductList();
+        } catch (error) {
+            console.error('Error saving product:', error);
+            alert('เกิดข้อผิดพลาดในการบันทึกสินค้า: ' + error.message);
+        } finally {
             loadingOverlay.style.display = 'none';
-            alert('เกิดข้อผิดพลาดในการโหลดข้อมูลเริ่มต้น');
-            return;
         }
-        await fetchStockFromSupa();
-        renderCategories();
-        const initialCategory = document.querySelector('.category-tab.active')?.dataset.category;
-        if (initialCategory) { renderProducts(initialCategory); }
-        renderCart();
-        loadingOverlay.style.display = 'none';
     }
-
+    async function generateNewProductId(categoryId) {
+        const categoryPrefixMap = { 'C001': 'CIG', 'C002': 'MED', 'C003': 'A', 'C004': 'B' };
+        const prefix = categoryPrefixMap[categoryId] || 'P';
+        const { data, error } = await supabaseClient.from('products').select('id').like('id', `${prefix}%`).order('id', { ascending: false }).limit(1);
+        if (error) { console.error(error); return `${prefix}001`; }
+        if (data.length === 0) { return `${prefix}001`; }
+        const lastId = data[0].id;
+        const lastNumber = parseInt(lastId.replace(prefix, ''), 10);
+        const newNumber = lastNumber + 1;
+        return `${prefix}${String(newNumber).padStart(3, '0')}`;
+    }
+    
     document.getElementById('sidebar-nav').addEventListener('click', e => { const navItem = e.target.closest('.nav-item'); if (!navItem || navItem.classList.contains('active')) return; document.querySelectorAll('.nav-item').forEach(tab => tab.classList.remove('active')); navItem.classList.add('active'); const tabName = navItem.dataset.tab; document.querySelectorAll('.content-view').forEach(view => view.style.display = 'none'); const targetView = document.getElementById(tabName); if (targetView) targetView.style.display = 'flex'; if (tabName === 'history-view') { displaySalesHistory(); } else if (tabName === 'product-admin-view') { renderAdminProductList(); } });
     categoryTabsContainer.addEventListener('click', e => { if (e.target.classList.contains('category-tab')) { document.querySelectorAll('.category-tab').forEach(tab => tab.classList.remove('active')); e.target.classList.add('active'); renderProducts(e.target.dataset.category); } });
     productGridContainer.addEventListener('click', e => { const productItem = e.target.closest('.product-item'); if (productItem && !productItem.classList.contains('disabled')) { const productId = productItem.dataset.productId; const product = products.find(p => p.id === productId); if (product.prices) { openPriceModal(product); } else { addToCart(productId, product.price); } } });
@@ -339,8 +361,8 @@ document.addEventListener('DOMContentLoaded', () => {
     imageUploadButton.addEventListener('click', () => imageUploadInput.click());
     imageUploadInput.addEventListener('change', (e) => { if (e.target.files && e.target.files[0]) { selectedFile = e.target.files[0]; const reader = new FileReader(); reader.onload = (event) => { imagePreview.src = event.target.result; }; reader.readAsDataURL(selectedFile); } });
     isMultiPriceCheckbox.addEventListener('change', (e) => { const isChecked = e.target.checked; multiPriceRow.style.display = isChecked ? 'block' : 'none'; productPriceInput.disabled = isChecked; if (isChecked) productPriceInput.value = ''; });
-    productCategorySelect.addEventListener('change', async (e) => { if (!isEditMode) { const categoryId = e.target.value; const prefixMap = { 'C001': 'CIG', 'C002': 'MED', 'C003': 'A', 'C004': 'B' }; const prefix = prefixMap[categoryId] || 'P'; productIdInput.value = 'กำลังสร้าง...'; const { data, error } = await supabaseClient.from('products').select('id').like('id', `${prefix}%`).order('id', { ascending: false }).limit(1); if (error) { console.error(error); productIdInput.value = `${prefix}001`; return; } if (data.length === 0) { productIdInput.value = `${prefix}001`; } else { const lastId = data[0].id; const lastNumber = parseInt(lastId.replace(prefix, ''), 10); const newNumber = lastNumber + 1; productIdInput.value = `${prefix}${String(newNumber).padStart(3, '0')}`; } } });
-    productForm.addEventListener('submit', async (event) => { event.preventDefault(); loadingOverlay.style.display = 'flex'; const formData = new FormData(productForm); const productId = isEditMode ? editingProductId : productIdInput.value; let publicUrl = isEditMode ? products.find(p => p.id === editingProductId).image_url : null; try { if (selectedFile) { const filePath = `${productId}.${selectedFile.name.split('.').pop()}`; const { error: uploadError } = await supabaseClient.storage.from('product-images').upload(filePath, selectedFile, { upsert: true }); if (uploadError) throw uploadError; const { data: urlData } = supabaseClient.storage.from('product-images').getPublicUrl(filePath); publicUrl = urlData.publicUrl; } const dataToSave = { id: productId, name: formData.get('name'), category_id: formData.get('category_id'), price: isMultiPriceCheckbox.checked ? null : parseFloat(formData.get('price')), prices: isMultiPriceCheckbox.checked ? formData.get('prices').split(',').map(Number) : null, image_url: publicUrl }; if (isEditMode) { const { error } = await supabaseClient.from('products').update(dataToSave).eq('id', editingProductId); if (error) throw error; } else { const { error: productError } = await supabaseClient.from('products').insert(dataToSave); if (productError) throw productError; const { error: stockError } = await supabaseClient.from('product_stocks').insert({ product_id: productId, stock: 0 }); if (stockError) throw stockError; } alert(`บันทึกสินค้า '${dataToSave.name}' สำเร็จ!`); productFormModal.style.display = 'none'; await initializePOS(); renderAdminProductList(); } catch (error) { console.error('Error saving product:', error); alert('เกิดข้อผิดพลาดในการบันทึกสินค้า: ' + error.message); } finally { loadingOverlay.style.display = 'none'; } });
+    productCategorySelect.addEventListener('change', async (e) => { if (!isEditMode) { const categoryName = e.target.value; const { data } = await supabaseClient.from('categories').select('id').eq('name', categoryName).single(); if(data) { const categoryId = data.id; productIdInput.value = 'กำลังสร้าง...'; productIdInput.value = await generateNewProductId(categoryId); } } });
+    productForm.addEventListener('submit', handleProductFormSubmit);
     document.getElementById('product-form-close-btn').addEventListener('click', () => productFormModal.style.display = 'none');
     priceModal.addEventListener('click', e => { if (e.target.id === 'modal-close-button' || e.target.id === 'multi-price-modal') closePriceModal(); });
     checkoutButton.addEventListener('click', () => { if (cart.length > 0) openPaymentModal(); });
