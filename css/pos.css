@@ -407,3 +407,86 @@
     color: var(--accent-color);
     font-weight: 700;
 }
+
+/* === Stock Management View === */
+
+.search-container {
+    padding: 15px 25px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#stock-search-input {
+    border: none;
+    outline: none;
+    width: 100%;
+    font-size: 16px;
+    font-family: var(--primary-font);
+}
+
+.stock-list-container {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 10px 25px;
+}
+
+.stock-item {
+    display: flex;
+    align-items: center;
+    padding: 15px 0;
+    border-bottom: 1px solid var(--border-color);
+    gap: 15px;
+}
+
+.stock-item:last-child {
+    border-bottom: none;
+}
+
+.stock-item-info {
+    flex-grow: 1;
+}
+
+.stock-item-name {
+    font-weight: 500;
+    margin-bottom: 4px;
+}
+
+.stock-item-current {
+    font-size: 14px;
+    color: var(--secondary-text-color);
+}
+
+.stock-item-actions {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.stock-item-actions input {
+    width: 60px;
+    padding: 8px;
+    text-align: center;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    font-size: 16px;
+    font-family: var(--primary-font);
+}
+
+.stock-item-actions button {
+    padding: 8px 15px;
+    font-family: var(--primary-font);
+    font-size: 14px;
+    font-weight: 500;
+    background-color: #28a745; /* Green */
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.stock-item-actions button:hover {
+    background-color: #218838;
+}
