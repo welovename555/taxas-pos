@@ -323,6 +323,3 @@ document.addEventListener('DOMContentLoaded', () => {
         renderCart();
         loadingOverlay.style.display = 'none';
     }
-    
-    initializePOS();
-});
