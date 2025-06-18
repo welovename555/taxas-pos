@@ -664,3 +664,16 @@
     background-color: transparent;
     color: var(--secondary-text-color);
 }
+
+/* Initially hide the app container to prevent FOUC */
+#app-container {
+  visibility: hidden;
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out;
+}
+
+/* When loaded, make it visible with a fade-in effect */
+#app-container.loaded {
+  visibility: visible;
+  opacity: 1;
+}
