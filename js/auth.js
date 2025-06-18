@@ -1,3 +1,5 @@
+import { supabaseClient } from './supabaseClient.js';
+
 document.addEventListener('DOMContentLoaded', () => {
     const loginForm = document.getElementById('login-form');
     const employeeCodeInput = document.getElementById('employee-code');
@@ -37,8 +39,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.log('Login successful for:', userData.name);
                 sessionStorage.setItem('currentUser', JSON.stringify(userData));
                 
-                // ไม่มีการเช็คกะค้างที่นี่อีกต่อไป
-                // ทำให้หน้าที่ของหน้านี้เรียบง่ายและลดโอกาสเกิดข้อผิดพลาด
+                // ตรวจสอบกะที่เปิดค้างไว้
+                const { data: shiftData, error: shiftError } = await supabaseClient
+                    .from('shifts')
+                    .select('id')
+                    .eq('employee_id', userData.id)
+                    .is('end_time', null)
+                    .single();
+                
+                if (shiftError && shiftError.code !== 'PGRST116') {
+                    throw shiftError;
+                }
+
+                if (shiftData) {
+                    console.log('Found an open shift:', shiftData.id);
+                    localStorage.setItem('currentShiftId', shiftData.id);
+                } else {
+                    localStorage.removeItem('currentShiftId');
+                }
                 
                 window.location.href = 'pos.html';
             }
